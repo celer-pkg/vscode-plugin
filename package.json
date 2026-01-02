@@ -1,0 +1,194 @@
+{
+  "name": "celer",
+  "displayName": "Celer - C/C++ Package Manager",
+  "description": "Graphical interface for Celer package manager operations",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/{celer,Celer}.toml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "celer.install",
+        "title": "Celer: Install Dependencies",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "celer.add",
+        "title": "Celer: Add Package",
+        "icon": "$(add)"
+      },
+      {
+        "command": "celer.remove",
+        "title": "Celer: Remove Package",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "celer.update",
+        "title": "Celer: Update Package",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "celer.search",
+        "title": "Celer: Search Packages",
+        "icon": "$(search)"
+      },
+      {
+        "command": "celer.refresh",
+        "title": "Celer: Refresh Dependencies",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "celer.selectPlatform",
+        "title": "Celer: Select Platform"
+      },
+      {
+        "command": "celer.selectProject",
+        "title": "Celer: Select Project"
+      },
+      {
+        "command": "celer.selectBuildType",
+        "title": "Celer: Select Build Type"
+      }
+    ],
+    "views": {
+      "celerPanel": [
+        {
+          "id": "celerDependencies",
+          "name": "Dependencies",
+          "when": "celer.hasCelerProject"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "celerPanel",
+          "title": "Celer",
+          "icon": "resources/celer-icon.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "celerDependencies",
+        "contents": "No Celer project found.\n[Initialize Celer Project](command:celer.install)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "celer.refresh",
+          "when": "view == celerDependencies",
+          "group": "navigation"
+        },
+        {
+          "command": "celer.add",
+          "when": "view == celerDependencies",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "celer.update",
+          "when": "view == celerDependencies && viewItem == dependency",
+          "group": "inline"
+        },
+        {
+          "command": "celer.remove",
+          "when": "view == celerDependencies && viewItem == dependency",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "celer.install",
+          "when": "celer.hasCelerProject"
+        },
+        {
+          "command": "celer.add",
+          "when": "celer.hasCelerProject"
+        },
+        {
+          "command": "celer.remove",
+          "when": "celer.hasCelerProject"
+        },
+        {
+          "command": "celer.update",
+          "when": "celer.hasCelerProject"
+        },
+        {
+          "command": "celer.search"
+        },
+        {
+          "command": "celer.selectPlatform",
+          "when": "celer.hasCelerProject"
+        },
+        {
+          "command": "celer.selectProject",
+          "when": "celer.hasCelerProject"
+        },
+        {
+          "command": "celer.selectBuildType",
+          "when": "celer.hasCelerProject"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Celer",
+      "properties": {
+        "celer.executable": {
+          "type": "string",
+          "default": "celer",
+          "description": "Path to the Celer executable"
+        },
+        "celer.autoInstall": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically install dependencies on project open"
+        },
+        "celer.checkUpdates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for package updates on startup"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.107.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.1",
+    "eslint": "^9.39.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.1"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5"
+  }
+}
