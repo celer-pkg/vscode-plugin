@@ -116,14 +116,31 @@ export function registerSelectJobsCommand(
             const cpuCount = os.cpus().length;
 
             // Generate job options from 1 to CPU count
-            const items = Array.from({ length: cpuCount }, (_, i) => i + 1).map(jobNum => ({
-                label: jobNum === currentJobs ? `$(check) ${jobNum}` : `      ${jobNum}`,
-                picked: jobNum === currentJobs,
-                value: jobNum
-            }));
+            const items = Array.from({ length: cpuCount }, (_, i) => i + 1).map(jobNum => {
+                const isSelected = jobNum === currentJobs;
+                const prefix = isSelected ? '$(check) ' : '      ';
+                const jobText = jobNum === 1 ? 'job' : 'jobs';
+                
+                // Add recommendations
+                let description = '';
+                if (jobNum === cpuCount) {
+                    description = 'Maximum (all cores)';
+                } else if (jobNum === Math.ceil(cpuCount * 0.75)) {
+                    description = 'Recommended (75%)';
+                } else if (jobNum === Math.ceil(cpuCount / 2)) {
+                    description = 'Balanced (50%)';
+                }
+
+                return {
+                    label: `${prefix}${jobNum} ${jobText}`,
+                    description: description,
+                    picked: isSelected,
+                    value: jobNum
+                };
+            });
 
             const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: `Select parallel build jobs (1-${cpuCount})`,
+                placeHolder: `Select parallel build jobs (1-${cpuCount} cores available)`,
                 title: 'Celer Build Jobs'
             });
 
