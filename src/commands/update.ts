@@ -35,9 +35,14 @@ export function registerUpdateCommand(
             }
 
             try {
-                await celer.update(packageName);
+                const args = ['update'];
+                if (packageName) {
+                    args.push(packageName);
+                }
+                await celer.runCommand(args);
+                vscode.window.showInformationMessage('Update completed successfully');
             } catch (error) {
-                // Error already shown in celerManager
+                vscode.window.showErrorMessage(`Failed to update: ${error}`);
             }
         })
     );

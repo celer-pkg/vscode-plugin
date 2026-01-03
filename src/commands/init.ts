@@ -4,10 +4,7 @@ import { Celer } from '../celer';
 /**
  * Initialize celer with configuration repository
  */
-export function registerInitCommand(
-    context: vscode.ExtensionContext,
-    celer: Celer
-): void {
+export function registerInitCommand(context: vscode.ExtensionContext, celer: Celer): void {
     context.subscriptions.push(vscode.commands.registerCommand('celer.init', async () => {
         const url = await vscode.window.showInputBox({
             prompt: 'Enter configuration repository URL',
@@ -44,11 +41,18 @@ export function registerInitCommand(
 
         if (forceOptions) {
             try {
-                await celer.init(url, branch, forceOptions.value);
+                const args = ['init', '--url', url];
+                if (branch) {
+                    args.push('--branch', branch);
+                }
+                if (forceOptions.value) {
+                    args.push('--force');
+                }
+                await celer.runCommand(args);
                 vscode.window.showInformationMessage('Celer project initialized successfully');
                 vscode.commands.executeCommand('setContext', 'celer.hasCelerProject', true);
             } catch (error) {
-                // Error already shown in celerManager
+                vscode.window.showErrorMessage(`Failed to initialize project: ${error}`);
             }
         }
     })

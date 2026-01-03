@@ -16,6 +16,7 @@ export interface CelerConfig {
     currentPlatform?: string;
     currentProject?: string;
     currentBuildType?: string;
+    jobs?: number;
 }
 
 export class Celer {
@@ -57,7 +58,7 @@ export class Celer {
         return this.outputChannel;
     }
 
-    private async runCommandInTerminal(args: string[]): Promise<void> {
+    public async runCommandInTerminal(args: string[]): Promise<void> {
         const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!cwd) {
             throw new Error('No workspace folder found');
@@ -100,7 +101,7 @@ export class Celer {
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    private async runCommand(args: string[], workspaceFolder?: string): Promise<string> {
+    public async runCommand(args: string[], workspaceFolder?: string): Promise<string> {
         return new Promise((resolve, reject) => {
             const cwd = workspaceFolder || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             
@@ -143,125 +144,6 @@ export class Celer {
                 reject(err);
             });
         });
-    }
-
-    async install(): Promise<void> {
-        try {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Installing Celer dependencies...',
-                cancellable: false
-            }, async () => {
-                await this.runCommand(['install']);
-                vscode.window.showInformationMessage('Celer dependencies installed successfully');
-            });
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to install dependencies: ${error}`);
-            throw error;
-        }
-    }
-
-    async remove(packageName: string): Promise<void> {
-        try {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: `Removing package ${packageName}...`,
-                cancellable: false
-            }, async () => {
-                await this.runCommand(['remove', packageName]);
-                vscode.window.showInformationMessage(`Package ${packageName} removed successfully`);
-            });
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to remove package: ${error}`);
-            throw error;
-        }
-    }
-
-    async update(packageName?: string): Promise<void> {
-        try {
-            const args = packageName ? ['update', packageName] : ['update'];
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: packageName ? `Updating ${packageName}...` : 'Updating all packages...',
-                cancellable: false
-            }, async () => {
-                await this.runCommand(args);
-                vscode.window.showInformationMessage(
-                    packageName ? `Package ${packageName} updated` : 'All packages updated'
-                );
-            });
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to update: ${error}`);
-            throw error;
-        }
-    }
-
-    async search(query: string): Promise<Package[]> {
-        try {
-            const output = await this.runCommand(['search', query, '--format', 'json']);
-            return JSON.parse(output);
-        } catch (error) {
-            try {
-                const output = await this.runCommand(['search', query]);
-                return this.parseSearchOutput(output);
-            } catch (fallbackError) {
-                vscode.window.showErrorMessage(`Failed to search packages: ${fallbackError}`);
-                return [];
-            }
-        }
-    }
-
-    async list(): Promise<Package[]> {
-        try {
-            const output = await this.runCommand(['list', '--format', 'json']);
-            return JSON.parse(output);
-        } catch (error) {
-            try {
-                const output = await this.runCommand(['list']);
-                return this.parseListOutput(output);
-            } catch (fallbackError) {
-                this.outputChannel.appendLine(`Failed to list packages: ${fallbackError}`);
-                return [];
-            }
-        }
-    }
-
-    private parseSearchOutput(output: string): Package[] {
-        const packages: Package[] = [];
-        const lines = output.split('\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-            // Try to parse lines like "package-name version - description"
-            const match = line.match(/^([\w-]+)\s+([\d.]+)(?:\s+-\s+(.+))?$/);
-            if (match) {
-                packages.push({
-                    name: match[1],
-                    version: match[2],
-                    description: match[3]
-                });
-            }
-        }
-        
-        return packages;
-    }
-
-    private parseListOutput(output: string): Package[] {
-        const packages: Package[] = [];
-        const lines = output.split('\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-            // Try to parse lines like "package-name@version" or "package-name version"
-            const match = line.match(/^([\w-]+)[@\s]+([\d.]+)(?:\s+(.+))?$/);
-            if (match) {
-                packages.push({
-                    name: match[1],
-                    version: match[2],
-                    description: match[3]
-                });
-            }
-        }
-        
-        return packages;
     }
 
     async hasCelerProject(): Promise<boolean> {
@@ -317,7 +199,8 @@ export class Celer {
                 projects: Array.isArray(section.projects) ? section.projects : [],
                 currentPlatform: section.platform,
                 currentProject: section.project,
-                currentBuildType: section.build_type
+                currentBuildType: section.build_type,
+                jobs: section.jobs ? parseInt(section.jobs) : undefined
             };
 
             return config;
@@ -414,122 +297,4 @@ export class Celer {
         // Build types are typically: debug, release, relwithdebinfo, minsizerel
         return ['debug', 'release', 'relwithdebinfo', 'minsizerel'];
     }
-
-    // New command methods for additional Celer CLI commands
-
-    async init(url: string, branch?: string, force?: boolean): Promise<void> {
-        const args = ['init', '--url', url];
-        if (branch) {
-            args.push('--branch', branch);
-        }
-        if (force) {
-            args.push('--force');
-        }
-
-        try {
-            await this.runCommand(args);
-            vscode.window.showInformationMessage(`Celer project initialized from ${url}`);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to initialize project: ${error}`);
-            throw error;
-        }
-    }
-
-    async clean(): Promise<void> {
-        try {
-            await this.runCommand(['clean']);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to clean: ${error}`);
-            throw error;
-        }
-    }
-
-    async autoremove(): Promise<void> {
-        try {
-            await this.runCommand(['autoremove']);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to autoremove: ${error}`);
-            throw error;
-        }
-    }
-
-    async tree(packageName?: string): Promise<void> {
-        try {
-            const args = ['tree'];
-            if (packageName) {
-                args.push(packageName);
-            }
-            const output = await this.runCommand(args);
-            
-            // Show tree output in a new document
-            const doc = await vscode.workspace.openTextDocument({
-                content: output,
-                language: 'plaintext'
-            });
-            await vscode.window.showTextDocument(doc, { preview: true });
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to show dependency tree: ${error}`);
-            throw error;
-        }
-    }
-
-    async reverse(packageName: string): Promise<void> {
-        try {
-            const output = await this.runCommand(['reverse', packageName]);
-            
-            // Show reverse dependencies in a new document
-            const doc = await vscode.workspace.openTextDocument({
-                content: output,
-                language: 'plaintext'
-            });
-            await vscode.window.showTextDocument(doc, { preview: true });
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to show reverse dependencies: ${error}`);
-            throw error;
-        }
-    }
-
-    async deploy(): Promise<void> {
-        try {
-            await this.runCommand(['deploy']);
-            vscode.window.showInformationMessage('Project deployed successfully');
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to deploy: ${error}`);
-            throw error;
-        }
-    }
-
-    async create(type: string, name: string): Promise<void> {
-        try {
-            await this.runCommand(['create', `--${type}`, name]);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to create ${type}: ${error}`);
-            throw error;
-        }
-    }
-
-    async configure(option?: string, value?: string): Promise<void> {
-        try {
-            const args = ['configure'];
-            if (option && value) {
-                args.push(`--${option}`, value);
-            }
-            await this.runCommand(args);
-            vscode.window.showInformationMessage('Configuration updated');
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to configure: ${error}`);
-            throw error;
-        }
-    }
-
-    async version(): Promise<void> {
-        try {
-            const output = await this.runCommand(['version']);
-            vscode.window.showInformationMessage(`Celer Version:\n${output}`);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to get version: ${error}`);
-            throw error;
-        }
-    }
 }
-

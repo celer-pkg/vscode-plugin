@@ -16,7 +16,8 @@ import {
     registerCreateCommand,
     registerConfigureCommand,
     registerVersionCommand,
-    registerSelectCommands
+    registerSelectCommands,
+    registerSelectJobsCommand
 } from './commands';
 
 let celer: Celer;
@@ -95,11 +96,12 @@ export async function activate(context: vscode.ExtensionContext) {
     registerConfigureCommand(context, celer);
     registerVersionCommand(context, celer);
     registerSelectCommands(context, celer, statusBarManager);
+    registerSelectJobsCommand(context, celer, statusBarManager);
 
     // Auto-install if enabled
     const config = vscode.workspace.getConfiguration('celer');
     if (hasCelerProject && config.get('autoInstall', false)) {
-        await celer.install();
+        await celer.runCommand(['install']);
     }
 
     // Watch for celer.toml changes

@@ -16,9 +16,13 @@ export function registerTreeCommand(
             });
 
             try {
-                await celer.tree(packageName);
+                const args = ['tree'];
+                if (packageName) {
+                    args.push(packageName);
+                }
+                await celer.runCommandInTerminal(args);
             } catch (error) {
-                // Error already shown in celerManager
+                vscode.window.showErrorMessage(`Failed to show tree: ${error}`);
             }
         })
     );

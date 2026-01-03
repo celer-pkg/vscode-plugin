@@ -16,4 +16,4 @@ export { registerDeployCommand } from './deploy';
 export { registerCreateCommand } from './create';
 export { registerConfigureCommand } from './configure';
 export { registerVersionCommand } from './version';
-export { registerSelectCommands } from './select';
+export { registerSelectCommands, registerSelectJobsCommand } from './select';

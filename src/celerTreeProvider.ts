@@ -1,5 +1,25 @@
 import * as vscode from 'vscode';
-import { Celer } from './celer';
+import { Celer, Package } from './celer';
+
+// Parse list output
+function parseListOutput(output: string): Package[] {
+    const packages: Package[] = [];
+    const lines = output.split('\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+        // Try to parse lines like "package-name version - description"
+        const match = line.match(/^([\w-]+)\s+([\d.]+)(?:\s+-\s+(.+))?$/);
+        if (match) {
+            packages.push({
+                name: match[1],
+                version: match[2],
+                description: match[3]
+            });
+        }
+    }
+    
+    return packages;
+}
 
 export class CelerTreeProvider implements vscode.TreeDataProvider<DependencyItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<DependencyItem | undefined | null | void> = 
@@ -21,8 +41,19 @@ export class CelerTreeProvider implements vscode.TreeDataProvider<DependencyItem
         if (!element) {
             // Root level - show all dependencies
             try {
-                const packages = await this.celer.list();
-                return packages.map((pkg: { name: string; version: string; description?: string }) => new DependencyItem(
+                let packages: Package[] = [];
+                
+                // Try JSON format first
+                try {
+                    const output = await this.celer.runCommand(['list', '--format', 'json']);
+                    packages = JSON.parse(output);
+                } catch (error) {
+                    // Fallback to plain text parsing
+                    const output = await this.celer.runCommand(['list']);
+                    packages = parseListOutput(output);
+                }
+                
+                return packages.map((pkg: Package) => new DependencyItem(
                     pkg.name,
                     pkg.version,
                     pkg.description,

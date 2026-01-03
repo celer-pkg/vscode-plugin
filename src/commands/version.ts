@@ -11,9 +11,9 @@ export function registerVersionCommand(
     context.subscriptions.push(
         vscode.commands.registerCommand('celer.version', async () => {
             try {
-                await celer.version();
+                await celer.runCommandInTerminal(['version']);
             } catch (error) {
-                // Error already shown in celerManager
+                vscode.window.showErrorMessage(`Failed to get version: ${error}`);
             }
         })
     );
