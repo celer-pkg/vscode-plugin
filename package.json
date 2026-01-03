@@ -16,14 +16,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "celer.install",
-        "title": "Celer: Install Dependencies",
-        "icon": "$(cloud-download)"
+        "command": "celer.init",
+        "title": "Celer: Initialize Project",
+        "icon": "$(rocket)"
       },
       {
-        "command": "celer.add",
-        "title": "Celer: Add Package",
-        "icon": "$(add)"
+        "command": "celer.install",
+        "title": "Celer: Install Package",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "celer.remove",
@@ -32,13 +32,53 @@
       },
       {
         "command": "celer.update",
-        "title": "Celer: Update Package",
+        "title": "Celer: Update",
         "icon": "$(sync)"
       },
       {
         "command": "celer.search",
         "title": "Celer: Search Packages",
         "icon": "$(search)"
+      },
+      {
+        "command": "celer.clean",
+        "title": "Celer: Clean Build Cache",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "celer.autoremove",
+        "title": "Celer: Auto Remove Unused Libraries",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "celer.tree",
+        "title": "Celer: Show Dependency Tree",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "celer.reverse",
+        "title": "Celer: Show Reverse Dependencies",
+        "icon": "$(references)"
+      },
+      {
+        "command": "celer.deploy",
+        "title": "Celer: Deploy Project",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "celer.create",
+        "title": "Celer: Create Platform/Project/Port",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "celer.configure",
+        "title": "Celer: Configure Global Settings",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "celer.version",
+        "title": "Celer: Show Version",
+        "icon": "$(info)"
       },
       {
         "command": "celer.refresh",
@@ -58,89 +98,6 @@
         "title": "Celer: Select Build Type"
       }
     ],
-    "views": {
-      "celerPanel": [
-        {
-          "id": "celerDependencies",
-          "name": "Dependencies",
-          "when": "celer.hasCelerProject"
-        }
-      ]
-    },
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "celerPanel",
-          "title": "Celer",
-          "icon": "resources/celer-icon.svg"
-        }
-      ]
-    },
-    "viewsWelcome": [
-      {
-        "view": "celerDependencies",
-        "contents": "No Celer project found.\n[Initialize Celer Project](command:celer.install)"
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "celer.refresh",
-          "when": "view == celerDependencies",
-          "group": "navigation"
-        },
-        {
-          "command": "celer.add",
-          "when": "view == celerDependencies",
-          "group": "navigation"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "celer.update",
-          "when": "view == celerDependencies && viewItem == dependency",
-          "group": "inline"
-        },
-        {
-          "command": "celer.remove",
-          "when": "view == celerDependencies && viewItem == dependency",
-          "group": "inline"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "celer.install",
-          "when": "celer.hasCelerProject"
-        },
-        {
-          "command": "celer.add",
-          "when": "celer.hasCelerProject"
-        },
-        {
-          "command": "celer.remove",
-          "when": "celer.hasCelerProject"
-        },
-        {
-          "command": "celer.update",
-          "when": "celer.hasCelerProject"
-        },
-        {
-          "command": "celer.search"
-        },
-        {
-          "command": "celer.selectPlatform",
-          "when": "celer.hasCelerProject"
-        },
-        {
-          "command": "celer.selectProject",
-          "when": "celer.hasCelerProject"
-        },
-        {
-          "command": "celer.selectBuildType",
-          "when": "celer.hasCelerProject"
-        }
-      ]
-    },
     "configuration": {
       "title": "Celer",
       "properties": {

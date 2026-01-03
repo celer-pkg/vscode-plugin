@@ -41,6 +41,7 @@ export class Celer {
                     return localCeler;
                 }
             }
+            
             // Add .exe extension if not present
             executable = 'celer.exe';
         }
@@ -160,22 +161,6 @@ export class Celer {
         }
     }
 
-    async add(packageName: string): Promise<void> {
-        try {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: `Adding package ${packageName}...`,
-                cancellable: false
-            }, async () => {
-                await this.runCommand(['add', packageName]);
-                vscode.window.showInformationMessage(`Package ${packageName} added successfully`);
-            });
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to add package: ${error}`);
-            throw error;
-        }
-    }
-
     async remove(packageName: string): Promise<void> {
         try {
             await vscode.window.withProgress({
@@ -287,8 +272,7 @@ export class Celer {
 
         try {
             const celerToml = await vscode.workspace.findFiles('**/celer.toml', null, 1);
-            const celerTomlUpper = await vscode.workspace.findFiles('**/Celer.toml', null, 1);
-            return celerToml.length > 0 || celerTomlUpper.length > 0;
+            return celerToml.length > 0;
         } catch {
             return false;
         }
@@ -300,14 +284,16 @@ export class Celer {
             return undefined;
         }
 
-        const celerToml = await vscode.workspace.findFiles('**/celer.toml', null, 1);
-        if (celerToml.length > 0) {
-            return celerToml[0].fsPath;
+        // Check for celer.toml in workspace root only
+        const celerTomlPath = path.join(workspaceFolder.uri.fsPath, 'celer.toml');
+        if (fs.existsSync(celerTomlPath)) {
+            return celerTomlPath;
         }
 
-        const celerTomlUpper = await vscode.workspace.findFiles('**/Celer.toml', null, 1);
-        if (celerTomlUpper.length > 0) {
-            return celerTomlUpper[0].fsPath;
+        // Check for Celer.toml (capitalized) in workspace root only
+        const celerTomlUpperPath = path.join(workspaceFolder.uri.fsPath, 'Celer.toml');
+        if (fs.existsSync(celerTomlUpperPath)) {
+            return celerTomlUpperPath;
         }
 
         return undefined;
@@ -321,19 +307,10 @@ export class Celer {
 
         try {
             const content = fs.readFileSync(tomlPath, 'utf-8');
-            this.outputChannel.appendLine(`[DEBUG] TOML file path: ${tomlPath}`);
-            this.outputChannel.appendLine(`[DEBUG] TOML content:\n${content}`);
-            
             const parsed = toml.parse(content) as any;
-            
-            this.outputChannel.appendLine(`[DEBUG] Parsed keys: ${Object.keys(parsed).join(', ')}`);
             
             // Support both root level and [global] section
             const section = parsed.global || parsed;
-            
-            this.outputChannel.appendLine(`[DEBUG] Using section with keys: ${Object.keys(section).join(', ')}`);
-            this.outputChannel.appendLine(`[DEBUG] section.platform = ${section.platform}`);
-            this.outputChannel.appendLine(`[DEBUG] section.project = ${section.project}`);
             
             const config: CelerConfig = {
                 platforms: Array.isArray(section.platforms) ? section.platforms : [],
@@ -343,32 +320,36 @@ export class Celer {
                 currentBuildType: section.build_type
             };
 
-            this.outputChannel.appendLine(`[DEBUG] Final config: platform=${config.currentPlatform}, project=${config.currentProject}, build_type=${config.currentBuildType}`);
             return config;
         } catch (error) {
             this.outputChannel.appendLine(`[ERROR] Failed to parse celer.toml: ${error}`);
-            console.error('Failed to parse celer.toml:', error);
             return {};
         }
     }
 
     async writeCelerConfig(config: Partial<CelerConfig>): Promise<void> {
         try {
-            // Use celer configure command to update settings in terminal
+            // Use celer configure command and wait for completion
             if (config.currentPlatform !== undefined) {
-                await this.runCommandInTerminal(['configure', '--platform', config.currentPlatform]);
+                this.outputChannel.appendLine(`[INFO] Setting platform to: ${config.currentPlatform}`);
+                await this.runCommand(['configure', '--platform', config.currentPlatform]);
                 this.outputChannel.appendLine(`[SUCCESS] Platform set to: ${config.currentPlatform}`);
             }
             
             if (config.currentProject !== undefined) {
-                await this.runCommandInTerminal(['configure', '--project', config.currentProject]);
+                this.outputChannel.appendLine(`[INFO] Setting project to: ${config.currentProject}`);
+                await this.runCommand(['configure', '--project', config.currentProject]);
                 this.outputChannel.appendLine(`[SUCCESS] Project set to: ${config.currentProject}`);
             }
             
             if (config.currentBuildType !== undefined) {
-                await this.runCommandInTerminal(['configure', '--build-type', config.currentBuildType]);
+                this.outputChannel.appendLine(`[INFO] Setting build type to: ${config.currentBuildType}`);
+                await this.runCommand(['configure', '--build-type', config.currentBuildType]);
                 this.outputChannel.appendLine(`[SUCCESS] Build type set to: ${config.currentBuildType}`);
             }
+
+            // Wait a bit for file system to sync
+            await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
             this.outputChannel.appendLine(`[ERROR] Failed to configure: ${error}`);
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -433,4 +414,122 @@ export class Celer {
         // Build types are typically: debug, release, relwithdebinfo, minsizerel
         return ['debug', 'release', 'relwithdebinfo', 'minsizerel'];
     }
+
+    // New command methods for additional Celer CLI commands
+
+    async init(url: string, branch?: string, force?: boolean): Promise<void> {
+        const args = ['init', '--url', url];
+        if (branch) {
+            args.push('--branch', branch);
+        }
+        if (force) {
+            args.push('--force');
+        }
+
+        try {
+            await this.runCommand(args);
+            vscode.window.showInformationMessage(`Celer project initialized from ${url}`);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to initialize project: ${error}`);
+            throw error;
+        }
+    }
+
+    async clean(): Promise<void> {
+        try {
+            await this.runCommand(['clean']);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to clean: ${error}`);
+            throw error;
+        }
+    }
+
+    async autoremove(): Promise<void> {
+        try {
+            await this.runCommand(['autoremove']);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to autoremove: ${error}`);
+            throw error;
+        }
+    }
+
+    async tree(packageName?: string): Promise<void> {
+        try {
+            const args = ['tree'];
+            if (packageName) {
+                args.push(packageName);
+            }
+            const output = await this.runCommand(args);
+            
+            // Show tree output in a new document
+            const doc = await vscode.workspace.openTextDocument({
+                content: output,
+                language: 'plaintext'
+            });
+            await vscode.window.showTextDocument(doc, { preview: true });
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to show dependency tree: ${error}`);
+            throw error;
+        }
+    }
+
+    async reverse(packageName: string): Promise<void> {
+        try {
+            const output = await this.runCommand(['reverse', packageName]);
+            
+            // Show reverse dependencies in a new document
+            const doc = await vscode.workspace.openTextDocument({
+                content: output,
+                language: 'plaintext'
+            });
+            await vscode.window.showTextDocument(doc, { preview: true });
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to show reverse dependencies: ${error}`);
+            throw error;
+        }
+    }
+
+    async deploy(): Promise<void> {
+        try {
+            await this.runCommand(['deploy']);
+            vscode.window.showInformationMessage('Project deployed successfully');
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to deploy: ${error}`);
+            throw error;
+        }
+    }
+
+    async create(type: string, name: string): Promise<void> {
+        try {
+            await this.runCommand(['create', `--${type}`, name]);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to create ${type}: ${error}`);
+            throw error;
+        }
+    }
+
+    async configure(option?: string, value?: string): Promise<void> {
+        try {
+            const args = ['configure'];
+            if (option && value) {
+                args.push(`--${option}`, value);
+            }
+            await this.runCommand(args);
+            vscode.window.showInformationMessage('Configuration updated');
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to configure: ${error}`);
+            throw error;
+        }
+    }
+
+    async version(): Promise<void> {
+        try {
+            const output = await this.runCommand(['version']);
+            vscode.window.showInformationMessage(`Celer Version:\n${output}`);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to get version: ${error}`);
+            throw error;
+        }
+    }
 }
+

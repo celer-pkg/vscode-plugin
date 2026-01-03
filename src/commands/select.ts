@@ -1,18 +1,19 @@
 import * as vscode from 'vscode';
 import { Celer } from '../celer';
+import { StatusBarManager } from '../statusbar';
 
 /**
- * Register configuration-related commands (platform, project, build type)
+ * Selection commands for platform, project, and build type
  */
-export function registerConfigCommands(
+export function registerSelectCommands(
     context: vscode.ExtensionContext,
-    celerManager: Celer,
-    updateStatusBarItems: () => Promise<void>
+    celer: Celer,
+    statusBarManager: StatusBarManager
 ): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('celer.selectPlatform', async () => {
-            const config = await celerManager.readCelerConfig();
-            const availablePlatforms = await celerManager.getAvailablePlatforms();
+            const config = await celer.readCelerConfig();
+            const availablePlatforms = await celer.getAvailablePlatforms();
 
             if (availablePlatforms.length === 0) {
                 vscode.window.showWarningMessage('No platforms found in conf/platforms directory');
@@ -32,22 +33,18 @@ export function registerConfigCommands(
 
             if (selected) {
                 try {
-                    await celerManager.writeCelerConfig({ currentPlatform: selected.label });
-                    // Wait a bit more to ensure file is written
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await updateStatusBarItems();
+                    await celer.writeCelerConfig({ currentPlatform: selected.label });
+                    await statusBarManager.updateStatusBarItems();
                     vscode.window.showInformationMessage(`Platform set to: ${selected.label}`);
                 } catch (error) {
-                    // Error already shown in celerManager
-                    // Just ensure status bar is still showing correct values
-                    await updateStatusBarItems();
+                    await statusBarManager.updateStatusBarItems();
                 }
             }
         }),
 
         vscode.commands.registerCommand('celer.selectProject', async () => {
-            const config = await celerManager.readCelerConfig();
-            const availableProjects = await celerManager.getAvailableProjects();
+            const config = await celer.readCelerConfig();
+            const availableProjects = await celer.getAvailableProjects();
 
             if (availableProjects.length === 0) {
                 vscode.window.showWarningMessage('No projects found in conf/projects directory');
@@ -67,21 +64,18 @@ export function registerConfigCommands(
 
             if (selected) {
                 try {
-                    await celerManager.writeCelerConfig({ currentProject: selected.label });
-                    // Wait a bit more to ensure file is written
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await updateStatusBarItems();
+                    await celer.writeCelerConfig({ currentProject: selected.label });
+                    await statusBarManager.updateStatusBarItems();
                     vscode.window.showInformationMessage(`Project set to: ${selected.label}`);
                 } catch (error) {
-                    // Error already shown in celerManager
-                    await updateStatusBarItems();
+                    await statusBarManager.updateStatusBarItems();
                 }
             }
         }),
 
         vscode.commands.registerCommand('celer.selectBuildType', async () => {
-            const config = await celerManager.readCelerConfig();
-            const availableBuildTypes = await celerManager.getAvailableBuildTypes();
+            const config = await celer.readCelerConfig();
+            const availableBuildTypes = await celer.getAvailableBuildTypes();
 
             const items = availableBuildTypes.map(buildType => ({
                 label: buildType,
@@ -96,14 +90,11 @@ export function registerConfigCommands(
 
             if (selected) {
                 try {
-                    await celerManager.writeCelerConfig({ currentBuildType: selected.label });
-                    // Wait a bit more to ensure file is written
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await updateStatusBarItems();
+                    await celer.writeCelerConfig({ currentBuildType: selected.label });
+                    await statusBarManager.updateStatusBarItems();
                     vscode.window.showInformationMessage(`Build type set to: ${selected.label}`);
                 } catch (error) {
-                    // Error already shown in celerManager
-                    await updateStatusBarItems();
+                    await statusBarManager.updateStatusBarItems();
                 }
             }
         })

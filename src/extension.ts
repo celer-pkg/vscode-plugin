@@ -1,29 +1,37 @@
 import * as vscode from 'vscode';
 import { Celer } from './celer';
-import { DependencyTreeProvider } from './dependencyTreeProvider';
-import { StatusBarManager } from './statusBarManager';
+import { StatusBarManager } from './statusbar';
 import { CelerInstaller } from './installer';
-import { registerConfigCommands } from './commands/configCommands';
-import { registerPackageCommands } from './commands/packageCommands';
-import { registerUtilityCommands } from './commands/utilityCommands';
+import {
+    registerInitCommand,
+    registerInstallCommand,
+    registerRemoveCommand,
+    registerUpdateCommand,
+    registerSearchCommand,
+    registerCleanCommand,
+    registerAutoremoveCommand,
+    registerTreeCommand,
+    registerReverseCommand,
+    registerDeployCommand,
+    registerCreateCommand,
+    registerConfigureCommand,
+    registerVersionCommand,
+    registerSelectCommands
+} from './commands';
 
 let celer: Celer;
-let dependencyTreeProvider: DependencyTreeProvider;
 let statusBarManager: StatusBarManager;
 let celerInstaller: CelerInstaller;
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Celer Package Manager extension is now active');
-
     // Initialize managers
     celer = new Celer();
-    dependencyTreeProvider = new DependencyTreeProvider(celer);
     statusBarManager = new StatusBarManager(celer, context);
     celerInstaller = new CelerInstaller(celer.getOutputChannel());
 
     // Check if this is the first time the extension is activated
     const isFirstRun = context.globalState.get<boolean>('celer.firstRun', true);
-    
+
     if (isFirstRun && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
         // First time setup - auto download and integrate celer
         await vscode.window.withProgress({
@@ -32,12 +40,13 @@ export async function activate(context: vscode.ExtensionContext) {
             cancellable: false
         }, async (progress) => {
             progress.report({ message: 'Checking for Celer executable...' });
-            const installed = await celerInstaller.ensureCelerInstalled(true); // true = auto install without prompt
+            // true = auto install without prompt
+            const installed = await celerInstaller.ensureCelerInstalled(true);
             if (installed) {
                 vscode.window.showInformationMessage('Celer extension initialized successfully!');
             }
         });
-        
+
         // Mark as no longer first run
         await context.globalState.update('celer.firstRun', false);
     }
@@ -59,12 +68,6 @@ export async function activate(context: vscode.ExtensionContext) {
         statusBarManager.createStatusBarItems();
     }
 
-    // Register tree view
-    const treeView = vscode.window.createTreeView('celerDependencies', {
-        treeDataProvider: dependencyTreeProvider,
-        showCollapseAll: true
-    });
-
     // Register installer commands
     context.subscriptions.push(
         vscode.commands.registerCommand('celer.installCelerExecutable', async () => {
@@ -78,38 +81,52 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Register all command modules
-    registerPackageCommands(context, celer, dependencyTreeProvider);
-    registerUtilityCommands(context, celer, dependencyTreeProvider);
-    registerConfigCommands(context, celer, async () => {
-        await statusBarManager.updateStatusBarItems();
-    });
-
-    context.subscriptions.push(treeView);
+    registerInitCommand(context, celer);
+    registerInstallCommand(context, celer);
+    registerRemoveCommand(context, celer);
+    registerUpdateCommand(context, celer);
+    registerSearchCommand(context, celer);
+    registerCleanCommand(context, celer);
+    registerAutoremoveCommand(context, celer);
+    registerTreeCommand(context, celer);
+    registerReverseCommand(context, celer);
+    registerDeployCommand(context, celer);
+    registerCreateCommand(context, celer);
+    registerConfigureCommand(context, celer);
+    registerVersionCommand(context, celer);
+    registerSelectCommands(context, celer, statusBarManager);
 
     // Auto-install if enabled
     const config = vscode.workspace.getConfiguration('celer');
     if (hasCelerProject && config.get('autoInstall', false)) {
         await celer.install();
-        dependencyTreeProvider.refresh();
     }
 
     // Watch for celer.toml changes
-    const watcher = vscode.workspace.createFileSystemWatcher('**/{celer,Celer}.toml');
-    watcher.onDidChange(() => dependencyTreeProvider.refresh());
+    const watcher = vscode.workspace.createFileSystemWatcher('celer.toml');
+
+    watcher.onDidChange(async () => {
+        await statusBarManager.updateStatusBarItems();
+    });
+
     watcher.onDidCreate(async () => {
         vscode.commands.executeCommand('setContext', 'celer.hasCelerProject', true);
-        dependencyTreeProvider.refresh();
+        statusBarManager.createStatusBarItems();
+        await statusBarManager.updateStatusBarItems();
     });
+
     watcher.onDidDelete(async () => {
         const stillHasProject = await celer.hasCelerProject();
         vscode.commands.executeCommand('setContext', 'celer.hasCelerProject', stillHasProject);
-        dependencyTreeProvider.refresh();
+        if (!stillHasProject) {
+            statusBarManager.dispose();
+        }
     });
+
     context.subscriptions.push(watcher);
 }
 
 export function deactivate() {
-    // Clean up status bar manager
     if (statusBarManager) {
         statusBarManager.dispose();
     }

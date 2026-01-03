@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import { Celer } from './celer';
 
-export class DependencyTreeProvider implements vscode.TreeDataProvider<DependencyItem> {
+export class CelerTreeProvider implements vscode.TreeDataProvider<DependencyItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<DependencyItem | undefined | null | void> = 
         new vscode.EventEmitter<DependencyItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<DependencyItem | undefined | null | void> = 
         this._onDidChangeTreeData.event;
 
-    constructor(private celerManager: Celer) {}
+    constructor(private celer: Celer) {}
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
@@ -21,7 +21,7 @@ export class DependencyTreeProvider implements vscode.TreeDataProvider<Dependenc
         if (!element) {
             // Root level - show all dependencies
             try {
-                const packages = await this.celerManager.list();
+                const packages = await this.celer.list();
                 return packages.map((pkg: { name: string; version: string; description?: string }) => new DependencyItem(
                     pkg.name,
                     pkg.version,
@@ -45,7 +45,6 @@ export class DependencyItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None
     ) {
         super(name, collapsibleState);
-        
         this.tooltip = `${name} v${version}${description ? '\n' + description : ''}`;
         this.description = version;
         this.contextValue = 'dependency';
