@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Celer } from '../celer';
 
 /**
@@ -34,29 +36,36 @@ export function registerCreateCommand(context: vscode.ExtensionContext, celer: C
         });
 
         if (name) {
-            try {
-                await celer.runCommand(['create', `--${createType.value}`, name]);
-                vscode.window.showInformationMessage(`${createType.label} "${name}" created successfully`);
+            // Execute create command in terminal
+            await celer.runCommandInTerminal(['create', `--${createType.value}=${name}`]);
 
-                // 尝试打开新建的 toml 文件
-                const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-                if (workspaceFolder) {
-                    let tomlPath = '';
-                    if (createType.value === 'platform') {
-                        tomlPath = vscode.Uri.file(require('path').join(workspaceFolder, 'conf', 'platforms', `${name}.toml`)).fsPath;
-                    } else if (createType.value === 'project') {
-                        tomlPath = vscode.Uri.file(require('path').join(workspaceFolder, 'conf', 'projects', `${name}.toml`)).fsPath;
-                    } else if (createType.value === 'port') {
-                        const portName = name.split('@')[0];
-                        tomlPath = vscode.Uri.file(require('path').join(workspaceFolder, 'ports', portName, `${portName}.toml`)).fsPath;
-                    }
-                    if (tomlPath && require('fs').existsSync(tomlPath)) {
+            // Wait for command to complete and file to be created
+            await new Promise(resolve => setTimeout(resolve, 2500));
+
+            // Try to open the newly created toml file
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (workspaceFolder) {
+                let tomlPath = '';
+                if (createType.value === 'platform') {
+                    tomlPath = path.join(workspaceFolder, 'conf', 'platforms', `${name}.toml`);
+                } else if (createType.value === 'project') {
+                    tomlPath = path.join(workspaceFolder, 'conf', 'projects', `${name}.toml`);
+                } else if (createType.value === 'port') {
+                    const portName = name.split('@')[0];
+                    tomlPath = path.join(workspaceFolder, 'ports', portName, `${portName}.toml`);
+                }
+                
+                if (tomlPath && fs.existsSync(tomlPath)) {
+                    try {
                         const doc = await vscode.workspace.openTextDocument(tomlPath);
                         await vscode.window.showTextDocument(doc);
+                    } catch (error) {
+                        vscode.window.showWarningMessage(`File created but could not be opened: ${error}`);
                     }
+                } else if (tomlPath) {
+                    // If file doesn't exist after waiting, show a message
+                    vscode.window.showWarningMessage(`File was not found at ${tomlPath}. Check terminal for errors.`);
                 }
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to create ${createType.value}: ${error}`);
             }
         }
     })

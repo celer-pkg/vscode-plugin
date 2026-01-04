@@ -28,6 +28,14 @@ export class Celer {
         this.celerPath = this.getCelerExecutable();
     }
 
+    /**
+     * Remove ANSI escape codes from string
+     */
+    private stripAnsiCodes(text: string): string {
+        // eslint-disable-next-line no-control-regex
+        return text.replace(/\x1b\[[0-9;]*m/g, '');
+    }
+
     private getCelerExecutable(): string {
         const config = vscode.workspace.getConfiguration('celer');
         let executable = config.get<string>('executable', 'celer');
@@ -136,7 +144,9 @@ export class Celer {
                 if (code === 0) {
                     resolve(stdout);
                 } else {
-                    reject(new Error(`Celer command failed with code ${code}:\n${stderr}`));
+                    // Strip ANSI codes from error message for dialog display
+                    const cleanStderr = this.stripAnsiCodes(stderr);
+                    reject(new Error(`Celer command failed with code ${code}:\n${cleanStderr}`));
                 }
             });
 
@@ -294,7 +304,206 @@ export class Celer {
     }
 
     async getAvailableBuildTypes(): Promise<string[]> {
-        // Build types are typically: debug, release, relwithdebinfo, minsizerel
-        return ['debug', 'release', 'relwithdebinfo', 'minsizerel'];
+        return ['Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel'];
+    }
+
+    async getConfRepositoryUrl(): Promise<string | undefined> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return undefined;
+        }
+
+        const confPath = path.join(workspaceFolder.uri.fsPath, 'conf');
+        if (!fs.existsSync(confPath)) {
+            return undefined;
+        }
+
+        const gitConfigPath = path.join(confPath, '.git', 'config');
+        if (!fs.existsSync(gitConfigPath)) {
+            return undefined;
+        }
+
+        try {
+            const gitConfig = fs.readFileSync(gitConfigPath, 'utf-8');
+            // Parse git config to find remote origin url
+            const urlMatch = gitConfig.match(/\[remote "origin"\][^\[]*url\s*=\s*(.+)/);
+            if (urlMatch && urlMatch[1]) {
+                return urlMatch[1].trim();
+            }
+        } catch (error) {
+            this.outputChannel.appendLine(`[ERROR] Failed to read git config: ${error}`);
+        }
+
+        return undefined;
+    }
+
+    async getConfRepositoryBranch(): Promise<string | undefined> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return undefined;
+        }
+
+        const confPath = path.join(workspaceFolder.uri.fsPath, 'conf');
+        if (!fs.existsSync(confPath)) {
+            return undefined;
+        }
+
+        const gitHeadPath = path.join(confPath, '.git', 'HEAD');
+        if (!fs.existsSync(gitHeadPath)) {
+            return undefined;
+        }
+
+        try {
+            const headContent = fs.readFileSync(gitHeadPath, 'utf-8').trim();
+            // HEAD content format: "ref: refs/heads/branch-name" or direct commit hash
+            const branchMatch = headContent.match(/ref:\s*refs\/heads\/(.+)/);
+            if (branchMatch && branchMatch[1]) {
+                return branchMatch[1].trim();
+            }
+        } catch (error) {
+            this.outputChannel.appendLine(`[ERROR] Failed to read git HEAD: ${error}`);
+        }
+
+        return undefined;
+    }
+
+    async hasConfRepositoryChanges(): Promise<boolean> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return false;
+        }
+
+        const confPath = path.join(workspaceFolder.uri.fsPath, 'conf');
+        if (!fs.existsSync(confPath)) {
+            return false;
+        }
+
+        const gitPath = path.join(confPath, '.git');
+        if (!fs.existsSync(gitPath)) {
+            return false;
+        }
+
+        return new Promise((resolve) => {
+            try {
+                const process = cp.spawn('git', ['status', '--porcelain'], {
+                    cwd: confPath,
+                    shell: true
+                });
+
+                let output = '';
+                process.stdout?.on('data', (data) => {
+                    output += data.toString();
+                });
+
+                process.on('close', (code) => {
+                    if (code === 0) {
+                        // If output is not empty, there are changes
+                        resolve(output.trim().length > 0);
+                    } else {
+                        resolve(false);
+                    }
+                });
+
+                process.on('error', () => {
+                    resolve(false);
+                });
+            } catch (error) {
+                this.outputChannel.appendLine(`[ERROR] Failed to check git status: ${error}`);
+                resolve(false);
+            }
+        });
+    }
+
+    async getInstalledPackages(): Promise<string[]> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return [];
+        }
+
+        const buildtreesPath = path.join(workspaceFolder.uri.fsPath, 'buildtrees');
+        if (!fs.existsSync(buildtreesPath)) {
+            this.outputChannel.appendLine(`[INFO] buildtrees directory not found: ${buildtreesPath}`);
+            return [];
+        }
+
+        try {
+            const dirs = fs.readdirSync(buildtreesPath, { withFileTypes: true });
+            const packages = dirs
+                .filter(dirent => dirent.isDirectory())
+                .map(dirent => dirent.name)
+                .sort();
+            
+            this.outputChannel.appendLine(`[INFO] Found ${packages.length} installed packages in buildtrees`);
+            return packages;
+        } catch (error) {
+            this.outputChannel.appendLine(`[ERROR] Failed to read buildtrees: ${error}`);
+            return [];
+        }
+    }
+
+    async getAvailablePorts(): Promise<string[]> {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            this.outputChannel.appendLine(`[ERROR] No workspace folder found`);
+            return [];
+        }
+
+        const portsPath = path.join(workspaceFolder.uri.fsPath, 'ports');
+        this.outputChannel.appendLine(`[INFO] Looking for ports in: ${portsPath}`);
+        
+        if (!fs.existsSync(portsPath)) {
+            this.outputChannel.appendLine(`[WARN] ports directory not found: ${portsPath}`);
+            return [];
+        }
+
+        try {
+            const ports: string[] = [];
+            const topLevelDirs = fs.readdirSync(portsPath, { withFileTypes: true });
+            this.outputChannel.appendLine(`[INFO] Found ${topLevelDirs.length} items in ports directory`);
+
+            for (const topDir of topLevelDirs) {
+                // Skip .git and other hidden directories
+                if (topDir.name.startsWith('.')) {
+                    continue;
+                }
+                
+                if (topDir.isDirectory()) {
+                    const topDirPath = path.join(portsPath, topDir.name);
+                    
+                    // Check if this is a category directory (a, b, c, etc.)
+                    const subItems = fs.readdirSync(topDirPath, { withFileTypes: true });
+                    
+                    for (const item of subItems) {
+                        if (item.isDirectory()) {
+                            const portName = item.name;
+                            const portPath = path.join(topDirPath, portName);
+                            
+                            // Check for version subdirectories
+                            const versionDirs = fs.readdirSync(portPath, { withFileTypes: true });
+                            for (const versionDir of versionDirs) {
+                                if (versionDir.isDirectory()) {
+                                    const version = versionDir.name;
+                                    const portFullName = `${portName}@${version}`;
+                                    ports.push(portFullName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            ports.sort();
+            this.outputChannel.appendLine(`[INFO] Total available ports: ${ports.length}`);
+            return ports;
+        } catch (error) {
+            this.outputChannel.appendLine(`[ERROR] Failed to read ports directory: ${error}`);
+            return [];
+        }
+    }
+
+    async getPortVersion(portName: string): Promise<string | undefined> {
+        // This method is no longer needed since versions are in directory names
+        // Kept for compatibility, returns undefined
+        return undefined;
     }
 }

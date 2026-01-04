@@ -113,12 +113,14 @@ export function registerSelectJobsCommand(
             const config = await celer.readCelerConfig();
             const currentJobs = config.jobs;
             const cpuCount = os.cpus().length;
+            const padWidth = String(cpuCount).length;
 
             // Generate job options from 1 to CPU count
             const items = Array.from({ length: cpuCount }, (_, i) => i + 1).map(jobNum => {
                 const isSelected = jobNum === currentJobs;
                 const prefix = isSelected ? '$(check) ' : '      ';
                 const jobText = jobNum === 1 ? 'job' : 'jobs';
+                const paddedJobNum = String(jobNum).padStart(padWidth, '0');
 
                 // Add recommendations
                 let description = '';
@@ -131,7 +133,7 @@ export function registerSelectJobsCommand(
                 }
 
                 return {
-                    label: `${prefix}${jobNum} ${jobText}`,
+                    label: `${prefix}${paddedJobNum} ${jobText}`,
                     description: description,
                     picked: isSelected,
                     value: jobNum
@@ -145,7 +147,7 @@ export function registerSelectJobsCommand(
 
             if (selected) {
                 try {
-                    await celer.runCommand(['configure', '--jobs', selected.value.toString()]);
+                    await celer.runCommand(['configure', `--jobs=${selected.value}`]);
                     await statusBarManager.updateStatusBarItems();
                     vscode.window.showInformationMessage(`Build jobs set to: ${selected.value}`);
                 } catch (error) {

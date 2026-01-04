@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as os from 'os';
 import { Celer } from './celer';
 
 interface StatusBarItems {
@@ -188,11 +189,22 @@ export class StatusBarManager {
 
             // Update build type
             const buildType = config.currentBuildType || 'Select build type';
-            this.statusBarItems.buildType.text = `$(tools) ${buildType}`;
+            const availableTypes = await this.celerManager.getAvailableBuildTypes();
+            const matchedType = availableTypes.find(t => t.toLowerCase() === buildType.toLowerCase());
+            const displayType = matchedType || buildType;
+            this.statusBarItems.buildType.text = `$(tools) ${displayType}`;
 
             // Update jobs
-            const jobs = config.jobs || 'N/A';
-            this.statusBarItems.jobs.text = `$(rocket) ${jobs}`;
+            const jobs = config.jobs;
+            if (jobs) {
+                // Get CPU count and calculate padding width based on max possible value
+                const cpuCount = os.cpus().length;
+                const padWidth = String(cpuCount).length;
+                const jobsDisplay = String(jobs).padStart(padWidth, '0');
+                this.statusBarItems.jobs.text = `$(rocket) ${jobsDisplay}`;
+            } else {
+                this.statusBarItems.jobs.text = `$(rocket) N/A`;
+            }
         } catch (error) {
             // Silently handle errors
         }

@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Celer, Package } from '../celer';
 
 // Parse search output
@@ -26,59 +28,96 @@ function parseSearchOutput(output: string): Package[] {
  */
 export function registerSearchCommand(context: vscode.ExtensionContext, celer: Celer): void {
     context.subscriptions.push(vscode.commands.registerCommand('celer.search', async () => {
-        const searchQuery = await vscode.window.showInputBox({
-            prompt: 'Enter package name to search',
-            placeHolder: 'package-name'
+        // Get all available ports from local ports directory
+        const availablePorts = await celer.getAvailablePorts();
+
+        if (availablePorts.length === 0) {
+            const action = await vscode.window.showWarningMessage(
+                'No ports found in ports directory. Make sure you have initialized the project with "celer init".',
+                'View Logs', 'Initialize Project'
+            );
+            
+            if (action === 'View Logs') {
+                celer.showOutput();
+            } else if (action === 'Initialize Project') {
+                vscode.commands.executeCommand('celer.init');
+            }
+            return;
+        }
+
+        // Create quick pick with filtering support
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.placeholder = 'Type to search ports (supports wildcards: zlib*, *@1.3.1, *lib*)';
+        quickPick.matchOnDescription = true;
+        quickPick.matchOnDetail = true;
+
+        // Function to create port items
+        const createPortItems = (ports: string[], filterPattern: string) => {
+            // Convert wildcard pattern to regex
+            const pattern = filterPattern
+                .replace(/\*/g, '.*')
+                .replace(/\?/g, '.');
+            const regex = new RegExp(pattern, 'i');
+            const filtered = ports.filter(port => regex.test(port));
+            
+            // Limit results to avoid performance issues
+            const maxResults = 100;
+            const limitedPorts = filtered.slice(0, maxResults);
+            
+            return limitedPorts.map(port => {
+                const [name, version] = port.split('@');
+                return {
+                    label: `$(package) ${name}`,
+                    description: version || '',
+                    portFullName: port
+                };
+            });
+        };
+
+        // Don't show any items initially
+        quickPick.items = [];
+
+        quickPick.onDidChangeValue((value) => {
+            if (!value) {
+                // Clear items when search is empty
+                quickPick.items = [];
+            } else {
+                // Filter ports based on pattern
+                quickPick.items = createPortItems(availablePorts, value);
+            }
         });
 
-        if (searchQuery) {
-            try {
-                let packages: Package[] = [];
-
-                // Try JSON format first
-                try {
-                    const output = await celer.runCommand(['search', searchQuery, '--format', 'json']);
-                    packages = JSON.parse(output);
-                } catch (error) {
-                    // Fallback to plain text parsing
-                    const output = await celer.runCommand(['search', searchQuery]);
-                    packages = parseSearchOutput(output);
-                }
-
-                if (packages.length === 0) {
-                    vscode.window.showInformationMessage(`No packages found matching "${searchQuery}"`);
-                    return;
-                }
-
-                const selected = await vscode.window.showQuickPick(
-                    packages.map(pkg => ({
-                        label: pkg.name,
-                        description: pkg.version,
-                        detail: pkg.description,
-                        pkg: pkg
-                    })),
-                    {
-                        placeHolder: 'Search results - Select a package to install'
-                    }
-                );
-
-                if (selected) {
-                    const action = await vscode.window.showInformationMessage(
-                        `Add ${selected.label} to project?`,
-                        'Add Port', 'Cancel'
+        quickPick.onDidAccept(async () => {
+            const selected = quickPick.selectedItems[0] as any;
+            if (selected) {
+                const fullName = selected.portFullName; // e.g., "zlib@1.3.1"
+                const [portName, version] = fullName.split('@');
+                quickPick.hide();
+                
+                // Open the port TOML file
+                const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (workspaceFolder) {
+                    const firstLetter = portName[0].toLowerCase();
+                    const portTomlPath = path.join(
+                        workspaceFolder, 
+                        'ports', 
+                        firstLetter, 
+                        portName, 
+                        version,
+                        'port.toml'
                     );
-
-                    if (action === 'Add Port') {
-                        // Format as name@version for port creation
-                        const portRef = `${selected.pkg.name}@${selected.pkg.version}`;
-                        await celer.runCommand(['create', '--port', portRef]);
-                        vscode.window.showInformationMessage(`Port ${portRef} added successfully`);
+                    if (fs.existsSync(portTomlPath)) {
+                        const doc = await vscode.workspace.openTextDocument(portTomlPath);
+                        await vscode.window.showTextDocument(doc);
+                    } else {
+                        vscode.window.showWarningMessage(`Port file not found: ${portTomlPath}`);
                     }
                 }
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to search packages: ${error}`);
             }
-        }
+        });
+
+        quickPick.onDidHide(() => quickPick.dispose());
+        quickPick.show();
     })
     );
 }

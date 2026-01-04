@@ -10,9 +10,9 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
             [
                 { label: '$(cloud) Offline Mode', value: 'offline', description: 'Enable/disable offline mode' },
                 { label: '$(file-code) Verbose Output', value: 'verbose', description: 'Enable/disable verbose output' },
-                { label: '$(database) Binary Cache', value: 'cache', description: 'Configure binary cache' },
-                { label: '$(globe) Http(s) Proxy', value: 'proxy', description: 'Configure Http(s) proxy' },
+                { label: '$(database) Binary Cache', value: 'binaryCache', description: 'Configure binary cache' },
                 { label: '$(zap) CCache', value: 'ccache', description: 'Configure ccache' },
+                { label: '$(globe) Http(s) Proxy', value: 'proxy', description: 'Configure Http(s) proxy' },
                 { label: '$(file-code) Open celer.toml', value: 'openToml', description: 'Edit configuration file directly' }
             ],
             { placeHolder: 'Select configuration category' }
@@ -33,39 +33,38 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
             return;
         }
 
-        try {
-            switch (configType.value) {
+        switch (configType.value) {
                 case 'offline': {
-                    const enabled = await vscode.window.showQuickPick(
+                    const action = await vscode.window.showQuickPick(
                         [
-                            { label: 'True', value: 'true' },
-                            { label: 'False', value: 'false' }
+                            { label: '$(check) Enable', value: 'true', description: 'Enable offline mode' },
+                            { label: '$(x) Disable', value: 'false', description: 'Disable offline mode' }
                         ],
-                        { placeHolder: `Select offline state` }
+                        { placeHolder: 'Select offline mode state' }
                     );
-                    if (enabled) {
-                        await celer.runCommand(['configure', `--offline`, enabled.value]);
-                        vscode.window.showInformationMessage('Configuration updated');
+                    if (action) {
+                        // Use --offline=true/false format to ensure proper parsing
+                        await celer.runCommandInTerminal(['configure', `--offline=${action.value}`]);
                     }
                     break;
                 }
 
                 case 'verbose': {
-                    const enabled = await vscode.window.showQuickPick(
+                    const action = await vscode.window.showQuickPick(
                         [
-                            { label: 'True', value: 'true' },
-                            { label: 'False', value: 'false' }
+                            { label: '$(check) Enable', value: 'true', description: 'Enable verbose output' },
+                            { label: '$(x) Disable', value: 'false', description: 'Disable verbose output' }
                         ],
-                        { placeHolder: `Select verbose state` }
+                        { placeHolder: 'Select verbose output state' }
                     );
-                    if (enabled) {
-                        await celer.runCommand(['configure', `--verbose`, enabled.value]);
-                        vscode.window.showInformationMessage('Configuration updated');
+                    if (action) {
+                        // Use --verbose=true/false format to ensure proper parsing
+                        await celer.runCommandInTerminal(['configure', `--verbose=${action.value}`]);
                     }
                     break;
                 }
 
-                case 'cache': {
+                case 'binaryCache': {
                     const cacheOption = await vscode.window.showQuickPick(
                         [
                             { label: 'Cache Directory', value: 'binary-cache-dir', description: 'Set binary cache directory' },
@@ -80,8 +79,7 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
                         placeHolder: cacheOption.value === 'binary-cache-dir' ? '/path/to/cache' : 'your-token'
                     });
                     if (value) {
-                        await celer.runCommand(['configure', `--${cacheOption.value}`, value]);
-                        vscode.window.showInformationMessage('Configuration updated');
+                        await celer.runCommandInTerminal(['configure', `--${cacheOption.value}=${value}`]);
                     }
                     break;
                 }
@@ -98,7 +96,7 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
 
                     const value = await vscode.window.showInputBox({
                         prompt: `Enter ${proxyOption.label}`,
-                        placeHolder: proxyOption.value === 'proxy-host' ? 'proxy.example.com' : '8080',
+                        placeHolder: proxyOption.value === 'proxy-host' ? '127.0.0.1' : '7890',
                         validateInput: (value) => {
                             if (proxyOption.value === 'proxy-port') {
                                 const port = parseInt(value);
@@ -108,8 +106,7 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
                         }
                     });
                     if (value) {
-                        await celer.runCommand(['configure', `--${proxyOption.value}`, value]);
-                        vscode.window.showInformationMessage('Configuration updated');
+                        await celer.runCommandInTerminal(['configure', `--${proxyOption.value}=${value}`]);
                     }
                     break;
                 }
@@ -135,8 +132,7 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
                             { placeHolder: 'Select ccache state' }
                         );
                         if (enabled) {
-                            await celer.runCommand(['configure', `--${ccacheOption.value}`, enabled.value]);
-                            vscode.window.showInformationMessage('Configuration updated');
+                            await celer.runCommandInTerminal(['configure', `--${ccacheOption.value}=${enabled.value}`]);
                         }
                     } else {
                         const value = await vscode.window.showInputBox({
@@ -146,16 +142,12 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
                                     'remote-storage-url'
                         });
                         if (value) {
-                            await celer.runCommand(['configure', `--${ccacheOption.value}`, value]);
-                            vscode.window.showInformationMessage('Configuration updated');
+                            await celer.runCommandInTerminal(['configure', `--${ccacheOption.value}=${value}`]);
                         }
                     }
                     break;
                 }
             }
-        } catch (error) {
-            // Error already shown in celer.configure
-        }
     })
     );
 }
