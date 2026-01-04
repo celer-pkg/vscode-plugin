@@ -6,8 +6,7 @@ import { StatusBarManager } from '../statusbar';
 /**
  * Selection commands for platform, project, and build type
  */
-export function registerSelectCommands(context: vscode.ExtensionContext, celer: Celer, statusBarManager: StatusBarManager
-): void {
+export function registerSelectCommands(context: vscode.ExtensionContext, celer: Celer, statusBarManager: StatusBarManager): void {
     context.subscriptions.push(vscode.commands.registerCommand('celer.selectPlatform', async () => {
         const config = await celer.readCelerConfig();
         const availablePlatforms = await celer.getAvailablePlatforms();
@@ -50,10 +49,10 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
             }
 
             const items = availableProjects.map(project => ({
-            label: project === config.currentProject ? `$(check) ${project}` : `      ${project}`,
-            picked: project === config.currentProject,
-            project: project
-        }));
+                label: project === config.currentProject ? `$(check) ${project}` : `      ${project}`,
+                picked: project === config.currentProject,
+                project: project
+            }));
 
             const selected = await vscode.window.showQuickPick(items, {
                 placeHolder: 'Select a project',
@@ -77,10 +76,10 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
             const availableBuildTypes = await celer.getAvailableBuildTypes();
 
             const items = availableBuildTypes.map(buildType => ({
-            label: buildType === config.currentBuildType ? `$(check) ${buildType}` : `      ${buildType}`,
-            picked: buildType === config.currentBuildType,
-            buildType: buildType
-        }));
+                label: buildType === config.currentBuildType ? `$(check) ${buildType}` : `      ${buildType}`,
+                picked: buildType === config.currentBuildType,
+                buildType: buildType
+            }));
 
             const selected = await vscode.window.showQuickPick(items, {
                 placeHolder: 'Select a build type',
@@ -120,7 +119,7 @@ export function registerSelectJobsCommand(
                 const isSelected = jobNum === currentJobs;
                 const prefix = isSelected ? '$(check) ' : '      ';
                 const jobText = jobNum === 1 ? 'job' : 'jobs';
-                
+
                 // Add recommendations
                 let description = '';
                 if (jobNum === cpuCount) {

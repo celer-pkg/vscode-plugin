@@ -18,7 +18,7 @@ import {
     registerVersionCommand,
     registerSelectCommands,
     registerSelectJobsCommand
-} from './commands';
+} from './cmds';
 
 let celer: Celer;
 let statusBarManager: StatusBarManager;

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as toml from '@iarna/toml';
+import { parse as tomlParse } from '@ltd/j-toml';
 
 export interface Package {
     name: string;
@@ -189,7 +189,7 @@ export class Celer {
 
         try {
             const content = fs.readFileSync(tomlPath, 'utf-8');
-            const parsed = toml.parse(content) as any;
+            const parsed = tomlParse(content) as any;
             
             // Support both root level and [global] section
             const section = parsed.global || parsed;

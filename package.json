@@ -123,7 +123,7 @@
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.js --watch",
+    "watch:esbuild": "node --no-deprecation esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",
@@ -146,6 +146,6 @@
     "typescript-eslint": "^8.48.1"
   },
   "dependencies": {
-    "@iarna/toml": "^2.2.5"
+    "@ltd/j-toml": "^1.38.0"
   }
 }

@@ -11,8 +11,8 @@ export function registerConfigureCommand(context: vscode.ExtensionContext, celer
                 { label: '$(cloud) Offline Mode', value: 'offline', description: 'Enable/disable offline mode' },
                 { label: '$(file-code) Verbose Output', value: 'verbose', description: 'Enable/disable verbose output' },
                 { label: '$(database) Binary Cache', value: 'cache', description: 'Configure binary cache' },
-                { label: '$(globe) Proxy Settings', value: 'proxy', description: 'Configure proxy settings' },
-                { label: '$(zap) CCache Settings', value: 'ccache', description: 'Configure ccache' },
+                { label: '$(globe) Http(s) Proxy', value: 'proxy', description: 'Configure Http(s) proxy' },
+                { label: '$(zap) CCache', value: 'ccache', description: 'Configure ccache' },
                 { label: '$(file-code) Open celer.toml', value: 'openToml', description: 'Edit configuration file directly' }
             ],
             { placeHolder: 'Select configuration category' }
