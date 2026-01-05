@@ -12,12 +12,31 @@ export function registerAutoremoveCommand(context: vscode.ExtensionContext, cele
         );
 
         if (confirmation === 'Yes') {
-            try {
-                await celer.runCommand(['autoremove']);
-                vscode.window.showInformationMessage('Unused libraries removed successfully');
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to autoremove: ${error}`);
+            // Show options for multi-select
+            const options = await vscode.window.showQuickPick(
+                [
+                    { label: '$(trash) Build Cache', description: 'Remove packages along with build cache', picked: false, flag: '--build-cache' },
+                    { label: '$(file) Purge', description: 'Remove packages along with its package file', picked: false, flag: '--purge' }
+                ],
+                { 
+                    placeHolder: 'Select autoremove options (multi-select, or skip for normal autoremove)',
+                    canPickMany: true 
+                }
+            );
+
+            if (options === undefined) {
+                return; // User cancelled
             }
+
+            // Build command arguments
+            const args: string[] = ['autoremove'];
+            
+            // Add selected flags
+            for (const opt of options) {
+                args.push((opt as any).flag);
+            }
+
+            await celer.runCommandInTerminal(args);
         }
     })
     );
