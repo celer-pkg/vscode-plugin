@@ -37,10 +37,6 @@ export class StatusBarManager {
         return vscode.workspace.getConfiguration('celer.statusBar').get<boolean>(key, true);
     }
 
-    private showIfEnabled(key: string, item: vscode.StatusBarItem): void {
-        if (this.isEnabled(key)) { item.show(); } else { item.hide(); }
-    }
-
     private refreshAllVisibility(): void {
         let anyVisible = false;
         for (const def of this.itemDefs) {

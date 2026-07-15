@@ -81,9 +81,13 @@
         "icon": "$(info)"
       },
       {
-        "command": "celer.refresh",
-        "title": "Celer: Refresh Dependencies",
-        "icon": "$(refresh)"
+        "command": "celer.selectBuildType",
+        "title": "Celer: Select Build Type"
+      },
+      {
+        "command": "celer.toggleStatusBar",
+        "title": "Celer: Toggle Status Bar Buttons",
+        "icon": "$(menu)"
       },
       {
         "command": "celer.selectPlatform",
@@ -94,13 +98,16 @@
         "title": "Celer: Select Project"
       },
       {
-        "command": "celer.selectBuildType",
-        "title": "Celer: Select Build Type"
+        "command": "celer.selectJobs",
+        "title": "Celer: Select Build Jobs"
       },
       {
-        "command": "celer.toggleStatusBar",
-        "title": "Celer: Toggle Status Bar Buttons",
-        "icon": "$(menu)"
+        "command": "celer.installCelerExecutable",
+        "title": "Celer: Download Celer Executable"
+      },
+      {
+        "command": "celer.resetFirstRun",
+        "title": "Celer: Reset First Run Status"
       }
     ],
     "configuration": {

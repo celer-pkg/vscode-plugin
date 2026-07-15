@@ -4,12 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { parse as tomlParse } from '@ltd/j-toml';
 
-export interface Package {
-    name: string;
-    version: string;
-    description?: string;
-}
-
 export interface CelerConfig {
     platforms?: string[];
     projects?: string[];
