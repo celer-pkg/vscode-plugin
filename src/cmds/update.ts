@@ -31,21 +31,41 @@ export function registerUpdateCommand(context: vscode.ExtensionContext, celer: C
                 break;
 
             case 'ports': {
-                // Get installed packages from buildtrees
                 const installedPackages = await celer.getInstalledPackages();
                 if (installedPackages.length === 0) {
                     vscode.window.showWarningMessage('No installed packages found in buildtrees directory');
                     return;
                 }
 
-                // Show multi-select quick pick
-                const selectedPackages = await vscode.window.showQuickPick(
-                    installedPackages.map(pkg => ({ label: pkg, picked: false })),
-                    {
-                        placeHolder: 'Select packages to update (Space to select, Enter to confirm)',
-                        canPickMany: true
-                    }
-                );
+                const allItems = installedPackages.map(pkg => ({ label: pkg }));
+                const selectedLabels = new Set<string>();
+
+                const qp = vscode.window.createQuickPick<(typeof allItems)[0]>();
+                qp.title = 'Celer Update Ports';
+                qp.placeholder = 'Type to search, Space to select';
+                qp.canSelectMany = true;
+                qp.items = allItems;
+
+                // Manual filter since canSelectMany disables built-in filter
+                qp.onDidChangeValue(value => {
+                    const lower = value.toLowerCase();
+                    qp.items = lower
+                        ? allItems.filter(i => i.label.toLowerCase().includes(lower))
+                        : allItems;
+                    // Restore previous selections
+                    qp.selectedItems = qp.items.filter(i => selectedLabels.has(i.label));
+                });
+
+                qp.onDidChangeSelection(sel => {
+                    selectedLabels.clear();
+                    for (const s of sel) { selectedLabels.add(s.label); }
+                });
+
+                const selectedPackages = await new Promise<{ label: string }[]>(resolve => {
+                    qp.onDidAccept(() => resolve([...qp.selectedItems]));
+                    qp.onDidHide(() => { qp.dispose(); resolve([]); });
+                    qp.show();
+                });
 
                 if (!selectedPackages || selectedPackages.length === 0) {
                     return;

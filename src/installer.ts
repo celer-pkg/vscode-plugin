@@ -60,7 +60,7 @@ export class CelerInstaller {
                 progress.report({ message: 'Downloading executable...' });
                 
                 // Download the appropriate binary
-                await this.downloadCeler(releaseInfo, localCelerPath);
+                await this.downloadCeler(releaseInfo, workspaceFolder);
                 
                 progress.report({ message: 'Making executable...' });
                 
@@ -119,66 +119,71 @@ export class CelerInstaller {
         });
     }
 
-    private async downloadCeler(releaseInfo: any, targetPath: string): Promise<void> {
-        // Determine the correct asset name based on platform
+    private async downloadCeler(releaseInfo: any, targetDir: string): Promise<void> {
         const platform = process.platform;
-        
-        let assetName: string;
+
+        let assetPattern: RegExp;
+        let extractCmd: string | null = null;
+        let outputExe: string;
+
         if (platform === 'win32') {
-            assetName = 'celer.exe';
-        } else if (platform === 'darwin') {
-            assetName = 'celer-macos';
+            assetPattern = /celer-windows-amd64\.exe\.zip/i;
+            outputExe = path.join(targetDir, 'celer.exe');
+            extractCmd = `powershell -Command "Expand-Archive -Path '{archive}' -DestinationPath '${targetDir}' -Force"`;
         } else if (platform === 'linux') {
-            assetName = 'celer-linux';
+            assetPattern = /celer-amd64-linux\.tar\.gz/i;
+            outputExe = path.join(targetDir, 'celer');
+            extractCmd = `tar -xzf "{archive}" -C "${targetDir}"`;
+        } else if (platform === 'darwin') {
+            assetPattern = /celer.*darwin|celer.*macos/i;
+            outputExe = path.join(targetDir, 'celer');
         } else {
             throw new Error(`Unsupported platform: ${platform}`);
         }
 
-        // Find the asset in the release
-        const asset = releaseInfo.assets?.find((a: any) => a.name === assetName);
+        const asset = releaseInfo.assets?.find((a: any) => assetPattern.test(a.name));
         if (!asset) {
-            throw new Error(`No asset found for ${assetName} in latest release`);
+            const names = (releaseInfo.assets || []).map((a: any) => a.name).join(', ');
+            throw new Error(`No asset matching ${assetPattern} found. Available: ${names}`);
         }
 
-        this.outputChannel.appendLine(`[INFO] Downloading from: ${asset.browser_download_url}`);
+        const archivePath = path.join(targetDir, asset.name);
+        this.outputChannel.appendLine(`[INFO] Downloading ${asset.name} from ${asset.browser_download_url}`);
 
+        await this.downloadFile(asset.browser_download_url, archivePath);
+
+        if (extractCmd) {
+            this.outputChannel.appendLine(`[INFO] Extracting ${asset.name}...`);
+            const cmd = extractCmd.replace('{archive}', archivePath);
+            cp.execSync(cmd, { cwd: targetDir, stdio: 'pipe' });
+            try { fs.unlinkSync(archivePath); } catch {}
+        } else {
+            fs.renameSync(archivePath, outputExe);
+        }
+
+        if (platform !== 'win32') {
+            fs.chmodSync(outputExe, 0o755);
+        }
+    }
+
+    private async downloadFile(url: string, targetPath: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const file = fs.createWriteStream(targetPath);
-            
-            https.get(asset.browser_download_url, (response) => {
-                // Handle redirects
+            https.get(url, (response) => {
                 if (response.statusCode === 302 || response.statusCode === 301) {
                     const redirectUrl = response.headers.location;
                     if (redirectUrl) {
-                        https.get(redirectUrl, (redirectResponse) => {
-                            redirectResponse.pipe(file);
-                            file.on('finish', () => {
-                                file.close();
-                                resolve();
-                            });
-                        }).on('error', (error) => {
-                            fs.unlinkSync(targetPath);
-                            reject(error);
-                        });
-                    } else {
-                        reject(new Error('Redirect location not found'));
-                    }
+                        https.get(redirectUrl, (rr) => {
+                            rr.pipe(file);
+                            file.on('finish', () => { file.close(); resolve(); });
+                        }).on('error', reject);
+                    } else { reject(new Error('Redirect location not found')); }
                 } else {
                     response.pipe(file);
-                    file.on('finish', () => {
-                        file.close();
-                        resolve();
-                    });
+                    file.on('finish', () => { file.close(); resolve(); });
                 }
-            }).on('error', (error) => {
-                fs.unlinkSync(targetPath);
-                reject(error);
-            });
-
-            file.on('error', (error) => {
-                fs.unlinkSync(targetPath);
-                reject(error);
-            });
+            }).on('error', reject);
+            file.on('error', reject);
         });
     }
 

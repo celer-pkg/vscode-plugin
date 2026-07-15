@@ -4,6 +4,7 @@ import { Celer } from './celer';
 
 interface StatusBarItems {
     configure: vscode.StatusBarItem;
+    settingsBtn: vscode.StatusBarItem;
     install: vscode.StatusBarItem;
     update: vscode.StatusBarItem;
     search: vscode.StatusBarItem;
@@ -84,22 +85,23 @@ export class StatusBarManager {
     createStatusBarItems(): void {
         const basePriority = 5;
         this.statusBarItems = {
-            version:    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 13),
-            configure:  vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 14),
-            platform:   vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 12),
-            project:    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 11),
-            buildType:  vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 10),
-            jobs:       vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 9),
-            separator:  vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 8),
-            init:       vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 7),
-            create:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 6),
-            update:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 5),
-            search:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 4),
-            install:    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 3),
-            autoremove: vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 2),
-            clean:      vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 1),
-            reverse:    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 0),
-            tree:       vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority - 1)
+            version:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 12),
+            configure:   vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 14),
+            settingsBtn: vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 13),
+            platform:    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 11),
+            project:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 10),
+            buildType:   vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 9),
+            jobs:        vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 8),
+            separator:   vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 7),
+            init:        vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 6),
+            create:      vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 5),
+            update:      vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 4),
+            search:      vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 3),
+            install:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 2),
+            autoremove:  vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 1),
+            clean:       vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority + 0),
+            reverse:     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority - 1),
+            tree:        vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, basePriority - 2)
         };
 
         // Register toggleable items (only these appear in the menu; core selectors always shown)
@@ -126,6 +128,12 @@ export class StatusBarManager {
         this.statusBarItems.configure.tooltip = 'Toggle visible buttons';
         this.statusBarItems.configure.command = 'celer.toggleStatusBar';
         this.statusBarItems.configure.show();
+
+        // Settings button (configure celer)
+        this.statusBarItems.settingsBtn.text = '$(settings)';
+        this.statusBarItems.settingsBtn.tooltip = 'Configure Celer Settings';
+        this.statusBarItems.settingsBtn.command = 'celer.configure';
+        this.statusBarItems.settingsBtn.show();
 
         this.statusBarItems.platform.text = '$(chip) Loading...';
         this.statusBarItems.platform.command = 'celer.selectPlatform';
@@ -202,6 +210,7 @@ export class StatusBarManager {
         this.context.subscriptions.push(
             this.statusBarItems.version,
             this.statusBarItems.configure,
+            this.statusBarItems.settingsBtn,
             this.statusBarItems.platform,
             this.statusBarItems.project,
             this.statusBarItems.buildType,

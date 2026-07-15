@@ -32,7 +32,6 @@ export class Celer {
      * Remove ANSI escape codes from string
      */
     private stripAnsiCodes(text: string): string {
-        // eslint-disable-next-line no-control-regex
         return text.replace(/\x1b\[[0-9;]*m/g, '');
     }
 
@@ -66,7 +65,37 @@ export class Celer {
         return this.outputChannel;
     }
 
+    /** Check if celer executable can be found */
+    public isAvailable(): boolean {
+        // Local file in workspace
+        if (path.isAbsolute(this.celerPath) && fs.existsSync(this.celerPath)) {
+            return true;
+        }
+        // In PATH
+        try {
+            const checkCmd = process.platform === 'win32' ? `where ${this.celerPath}` : `which ${this.celerPath}`;
+            cp.execSync(checkCmd, { stdio: 'ignore' });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /** Show error and offer to install if celer is not available. Returns true if available. */
+    public async ensureAvailable(): Promise<boolean> {
+        if (this.isAvailable()) { return true; }
+        const action = await vscode.window.showErrorMessage(
+            'Celer executable not found. Please install celer first, or download it from GitHub.',
+            'Download', 'Cancel'
+        );
+        if (action === 'Download') {
+            vscode.commands.executeCommand('celer.installCelerExecutable');
+        }
+        return false;
+    }
+
     public async runCommandInTerminal(args: string[]): Promise<void> {
+        if (!await this.ensureAvailable()) { return; }
         const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!cwd) {
             throw new Error('No workspace folder found');
@@ -110,6 +139,8 @@ export class Celer {
     }
 
     public async runCommand(args: string[], workspaceFolder?: string): Promise<string> {
+        if (!await this.ensureAvailable()) { throw new Error('Celer executable not found'); }
+
         return new Promise((resolve, reject) => {
             const cwd = workspaceFolder || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             
@@ -204,6 +235,18 @@ export class Celer {
 
         this.outputChannel.appendLine('[DEBUG] getCelerTomlPath: celer.toml not found');
         return undefined;
+    }
+
+    /** Read the raw parsed celer.toml (for configure command to read current values) */
+    async readFullToml(): Promise<any> {
+        const tomlPath = await this.getCelerTomlPath();
+        if (!tomlPath) { return {}; }
+        try {
+            const content = fs.readFileSync(tomlPath, 'utf-8');
+            return tomlParse(content) as any;
+        } catch {
+            return {};
+        }
     }
 
     async readCelerConfig(): Promise<CelerConfig> {
@@ -470,7 +513,7 @@ export class Celer {
 
         const portsPath = path.join(workspaceFolder.uri.fsPath, 'ports');
         this.outputChannel.appendLine(`[INFO] Looking for ports in: ${portsPath}`);
-        
+
         if (!fs.existsSync(portsPath)) {
             this.outputChannel.appendLine(`[WARN] ports directory not found: ${portsPath}`);
             return [];
@@ -482,31 +525,31 @@ export class Celer {
             this.outputChannel.appendLine(`[INFO] Found ${topLevelDirs.length} items in ports directory`);
 
             for (const topDir of topLevelDirs) {
-                // Skip .git and other hidden directories
-                if (topDir.name.startsWith('.')) {
-                    continue;
-                }
-                
-                if (topDir.isDirectory()) {
-                    const topDirPath = path.join(portsPath, topDir.name);
-                    
-                    // Check if this is a category directory (a, b, c, etc.)
-                    const subItems = fs.readdirSync(topDirPath, { withFileTypes: true });
-                    
+                if (!topDir.isDirectory() || topDir.name.startsWith('.')) { continue; }
+
+                const topDirPath = path.join(portsPath, topDir.name);
+                const subItems = fs.readdirSync(topDirPath, { withFileTypes: true });
+
+                // Detect structure: single-letter dirs (a-z) = category; otherwise = flat port
+                const isCategoryDir = topDir.name.length === 1 && /^[a-z]$/.test(topDir.name);
+
+                if (isCategoryDir) {
+                    // Category structure: ports/<letter>/<port-name>/<version>/
+                    for (const item of subItems) {
+                        if (!item.isDirectory()) { continue; }
+                        const portPath = path.join(topDirPath, item.name);
+                        const versionDirs = fs.readdirSync(portPath, { withFileTypes: true });
+                        for (const vd of versionDirs) {
+                            if (vd.isDirectory()) {
+                                ports.push(`${item.name}@${vd.name}`);
+                            }
+                        }
+                    }
+                } else {
+                    // Flat structure: ports/<port-name>/<version>/
                     for (const item of subItems) {
                         if (item.isDirectory()) {
-                            const portName = item.name;
-                            const portPath = path.join(topDirPath, portName);
-                            
-                            // Check for version subdirectories
-                            const versionDirs = fs.readdirSync(portPath, { withFileTypes: true });
-                            for (const versionDir of versionDirs) {
-                                if (versionDir.isDirectory()) {
-                                    const version = versionDir.name;
-                                    const portFullName = `${portName}@${version}`;
-                                    ports.push(portFullName);
-                                }
-                            }
+                            ports.push(`${topDir.name}@${item.name}`);
                         }
                     }
                 }
