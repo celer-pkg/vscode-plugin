@@ -22,12 +22,12 @@ export function registerUpdateCommand(context: vscode.ExtensionContext, celer: C
         switch (updateType.value) {
             case 'conf-repo':
                 // Update conf repository
-                await celer.runCommandInTerminal(['update', '--conf-repo']);
+                await celer.runCommandInTerminal(['update', '-c']);
                 break;
 
             case 'ports-repo':
                 // Update ports repository
-                await celer.runCommandInTerminal(['update', '--ports-repo']);
+                await celer.runCommandInTerminal(['update', '-p']);
                 break;
 
             case 'ports': {
@@ -71,11 +71,11 @@ export function registerUpdateCommand(context: vscode.ExtensionContext, celer: C
                 const packageNames = selectedPackages.map(item => item.label);
                 
                 if (options.value === 'recursive') {
-                    args.push('--recursive');
+                    args.push('-r');
                 } else if (options.value === 'force') {
-                    args.push('--force');
+                    args.push('-f');
                 } else if (options.value === 'recursive-force') {
-                    args.push('--recursive', '--force');
+                    args.push('-r', '-f');
                 }
                 
                 args.push(...packageNames);

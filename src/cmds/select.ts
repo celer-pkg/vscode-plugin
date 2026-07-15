@@ -4,99 +4,97 @@ import { Celer } from '../celer';
 import { StatusBarManager } from '../statusbar';
 
 /**
- * Selection commands for platform, project, and build type
+ * Selection commands for platform, project, build type, and jobs
  */
 export function registerSelectCommands(context: vscode.ExtensionContext, celer: Celer, statusBarManager: StatusBarManager): void {
+    // Helper: show a QuickPick that auto-focuses on the current item
+    async function pickCurrent<T extends vscode.QuickPickItem>(
+        title: string, placeHolder: string,
+        items: T[], currentIndex: number,
+        onSelect: (item: T) => Promise<void>
+    ): Promise<void> {
+        const qp = vscode.window.createQuickPick<T>();
+        qp.title = title;
+        qp.placeholder = placeHolder;
+        qp.items = items;
+        // Scroll to & highlight the current item
+        if (currentIndex >= 0 && currentIndex < items.length) {
+            qp.activeItems = [items[currentIndex]];
+        }
+        qp.onDidAccept(async () => {
+            const selected = qp.selectedItems[0];
+            if (selected) {
+                qp.hide();
+                await onSelect(selected);
+            }
+        });
+        qp.onDidHide(() => qp.dispose());
+        qp.show();
+    }
+
     context.subscriptions.push(vscode.commands.registerCommand('celer.selectPlatform', async () => {
         const config = await celer.readCelerConfig();
-        const availablePlatforms = await celer.getAvailablePlatforms();
+        const platforms = await celer.getAvailablePlatforms();
 
-        if (availablePlatforms.length === 0) {
+        if (platforms.length === 0) {
             vscode.window.showWarningMessage('No platforms found in conf/platforms directory');
             return;
         }
 
-        const items = availablePlatforms.map(platform => ({
-            label: platform === config.currentPlatform ? `$(check) ${platform}` : `      ${platform}`,
-            picked: platform === config.currentPlatform,
-            platform: platform
+        const currentPlatform = config.currentPlatform;
+        const items = platforms.map(p => ({
+            label: p,
+            platform: p,
         }));
+        const idx = items.findIndex(i => i.platform === currentPlatform);
 
-        const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: 'Select a platform',
-            title: 'Celer Platform'
+        await pickCurrent('Celer Platform', 'Select a platform', items, idx, async (item: any) => {
+            await celer.runCommand(['configure', `--platform=${item.platform}`]);
+            await statusBarManager.updateStatusBarItems();
+            vscode.window.showInformationMessage(`Platform set to: ${item.platform}`);
         });
-
-        if (selected) {
-            try {
-                await celer.runCommand(['configure', '--platform', selected.platform]);
-                await statusBarManager.updateStatusBarItems();
-                vscode.window.showInformationMessage(`Platform set to: ${selected.platform}`);
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to set platform: ${error}`);
-                await statusBarManager.updateStatusBarItems();
-            }
-        }
     }),
 
-        vscode.commands.registerCommand('celer.selectProject', async () => {
-            const config = await celer.readCelerConfig();
-            const availableProjects = await celer.getAvailableProjects();
+    vscode.commands.registerCommand('celer.selectProject', async () => {
+        const config = await celer.readCelerConfig();
+        const projects = await celer.getAvailableProjects();
 
-            if (availableProjects.length === 0) {
-                vscode.window.showWarningMessage('No projects found in conf/projects directory');
-                return;
-            }
+        if (projects.length === 0) {
+            vscode.window.showWarningMessage('No projects found in conf/projects directory');
+            return;
+        }
 
-            const items = availableProjects.map(project => ({
-                label: project === config.currentProject ? `$(check) ${project}` : `      ${project}`,
-                picked: project === config.currentProject,
-                project: project
-            }));
+        const currentProject = config.currentProject;
+        const items = projects.map(p => ({
+            label: p,
+            project: p,
+        }));
+        const idx = items.findIndex(i => i.project === currentProject);
 
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Select a project',
-                title: 'Celer Project'
-            });
+        await pickCurrent('Celer Project', 'Select a project', items, idx, async (item: any) => {
+            await celer.runCommand(['configure', `--project=${item.project}`]);
+            await statusBarManager.updateStatusBarItems();
+            vscode.window.showInformationMessage(`Project set to: ${item.project}`);
+        });
+    }),
 
-            if (selected) {
-                try {
-                    await celer.runCommand(['configure', '--project', selected.project]);
-                    await statusBarManager.updateStatusBarItems();
-                    vscode.window.showInformationMessage(`Project set to: ${selected.project}`);
-                } catch (error) {
-                    vscode.window.showErrorMessage(`Failed to set project: ${error}`);
-                    await statusBarManager.updateStatusBarItems();
-                }
-            }
-        }),
+    vscode.commands.registerCommand('celer.selectBuildType', async () => {
+        const config = await celer.readCelerConfig();
+        const types = await celer.getAvailableBuildTypes();
 
-        vscode.commands.registerCommand('celer.selectBuildType', async () => {
-            const config = await celer.readCelerConfig();
-            const availableBuildTypes = await celer.getAvailableBuildTypes();
+        const currentBuildType = config.currentBuildType?.toLowerCase();
+        const items = types.map(t => ({
+            label: t,
+            buildType: t,
+        }));
+        const idx = items.findIndex(i => i.buildType.toLowerCase() === currentBuildType);
 
-            const items = availableBuildTypes.map(buildType => ({
-                label: buildType === config.currentBuildType ? `$(check) ${buildType}` : `      ${buildType}`,
-                picked: buildType === config.currentBuildType,
-                buildType: buildType
-            }));
-
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Select a build type',
-                title: 'Celer Build Type'
-            });
-
-            if (selected) {
-                try {
-                    await celer.runCommand(['configure', '--build-type', selected.buildType]);
-                    await statusBarManager.updateStatusBarItems();
-                    vscode.window.showInformationMessage(`Build type set to: ${selected.buildType}`);
-                } catch (error) {
-                    vscode.window.showErrorMessage(`Failed to set build type: ${error}`);
-                    await statusBarManager.updateStatusBarItems();
-                }
-            }
-        })
+        await pickCurrent('Celer Build Type', 'Select a build type', items, idx, async (item: any) => {
+            await celer.runCommand(['configure', `--build-type=${item.buildType}`]);
+            await statusBarManager.updateStatusBarItems();
+            vscode.window.showInformationMessage(`Build type set to: ${item.buildType}`);
+        });
+    })
     );
 }
 
@@ -115,14 +113,10 @@ export function registerSelectJobsCommand(
             const cpuCount = os.cpus().length;
             const padWidth = String(cpuCount).length;
 
-            // Generate job options from 1 to CPU count
             const items = Array.from({ length: cpuCount }, (_, i) => i + 1).map(jobNum => {
-                const isSelected = jobNum === currentJobs;
-                const prefix = isSelected ? '$(check) ' : '      ';
                 const jobText = jobNum === 1 ? 'job' : 'jobs';
                 const paddedJobNum = String(jobNum).padStart(padWidth, '0');
 
-                // Add recommendations
                 let description = '';
                 if (jobNum === cpuCount) {
                     description = 'Maximum (all cores)';
@@ -133,28 +127,32 @@ export function registerSelectJobsCommand(
                 }
 
                 return {
-                    label: `${prefix}${paddedJobNum} ${jobText}`,
-                    description: description,
-                    picked: isSelected,
-                    value: jobNum
+                    label: `${paddedJobNum} ${jobText}`,
+                    description,
+                    value: jobNum,
                 };
             });
 
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: `Select parallel build jobs (1-${cpuCount} cores available)`,
-                title: 'Celer Build Jobs'
-            });
+            const idx = items.findIndex(i => i.value === currentJobs);
 
-            if (selected) {
-                try {
+            const qp = vscode.window.createQuickPick<(typeof items)[0]>();
+            qp.title = 'Celer Build Jobs';
+            qp.placeholder = `Select parallel build jobs (1-${cpuCount} cores available)`;
+            qp.items = items;
+            if (idx >= 0) {
+                qp.activeItems = [items[idx]];
+            }
+            qp.onDidAccept(async () => {
+                const selected = qp.selectedItems[0];
+                if (selected) {
+                    qp.hide();
                     await celer.runCommand(['configure', `--jobs=${selected.value}`]);
                     await statusBarManager.updateStatusBarItems();
                     vscode.window.showInformationMessage(`Build jobs set to: ${selected.value}`);
-                } catch (error) {
-                    vscode.window.showErrorMessage(`Failed to set jobs: ${error}`);
-                    await statusBarManager.updateStatusBarItems();
                 }
-            }
+            });
+            qp.onDidHide(() => qp.dispose());
+            qp.show();
         })
     );
 }

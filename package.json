@@ -96,6 +96,11 @@
       {
         "command": "celer.selectBuildType",
         "title": "Celer: Select Build Type"
+      },
+      {
+        "command": "celer.toggleStatusBar",
+        "title": "Celer: Toggle Status Bar Buttons",
+        "icon": "$(menu)"
       }
     ],
     "configuration": {
@@ -115,6 +120,81 @@
           "type": "boolean",
           "default": true,
           "description": "Check for package updates on startup"
+        },
+        "celer.statusBar.showVersion": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show version button on status bar"
+        },
+        "celer.statusBar.showConfigure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show configure button on status bar"
+        },
+        "celer.statusBar.showPlatform": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show platform selector on status bar"
+        },
+        "celer.statusBar.showProject": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show project selector on status bar"
+        },
+        "celer.statusBar.showBuildType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show build type selector on status bar"
+        },
+        "celer.statusBar.showJobs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show jobs selector on status bar"
+        },
+        "celer.statusBar.showInit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show init button on status bar"
+        },
+        "celer.statusBar.showCreate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show create button on status bar"
+        },
+        "celer.statusBar.showInstall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show install button on status bar"
+        },
+        "celer.statusBar.showUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show update button on status bar"
+        },
+        "celer.statusBar.showSearch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show search button on status bar"
+        },
+        "celer.statusBar.showClean": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show clean button on status bar"
+        },
+        "celer.statusBar.showAutoremove": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show autoremove button on status bar"
+        },
+        "celer.statusBar.showReverse": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show reverse button on status bar"
+        },
+        "celer.statusBar.showTree": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show tree button on status bar"
         }
       }
     }
@@ -135,9 +215,9 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
+    "@types/node": "^22.20.1",
     "@types/vscode": "^1.107.0",
-    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.1",
     "eslint": "^9.39.1",

@@ -173,21 +173,36 @@ export class Celer {
     async getCelerTomlPath(): Promise<string | undefined> {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         if (!workspaceFolder) {
+            this.outputChannel.appendLine('[DEBUG] getCelerTomlPath: no workspace folder');
             return undefined;
         }
 
+        const rootPath = workspaceFolder.uri.fsPath;
+        this.outputChannel.appendLine(`[DEBUG] getCelerTomlPath: workspace root = ${rootPath}`);
+
         // Check for celer.toml in workspace root only
-        const celerTomlPath = path.join(workspaceFolder.uri.fsPath, 'celer.toml');
+        const celerTomlPath = path.join(rootPath, 'celer.toml');
+        this.outputChannel.appendLine(`[DEBUG] getCelerTomlPath: checking ${celerTomlPath}, exists=${fs.existsSync(celerTomlPath)}`);
         if (fs.existsSync(celerTomlPath)) {
             return celerTomlPath;
         }
 
         // Check for Celer.toml (capitalized) in workspace root only
-        const celerTomlUpperPath = path.join(workspaceFolder.uri.fsPath, 'Celer.toml');
+        const celerTomlUpperPath = path.join(rootPath, 'Celer.toml');
+        this.outputChannel.appendLine(`[DEBUG] getCelerTomlPath: checking ${celerTomlUpperPath}, exists=${fs.existsSync(celerTomlUpperPath)}`);
         if (fs.existsSync(celerTomlUpperPath)) {
             return celerTomlUpperPath;
         }
 
+        // Fallback: use findFiles (same as hasCelerProject)
+        this.outputChannel.appendLine('[DEBUG] getCelerTomlPath: root check failed, trying findFiles');
+        const files = await vscode.workspace.findFiles('**/{celer,Celer}.toml', null, 1);
+        if (files.length > 0) {
+            this.outputChannel.appendLine(`[DEBUG] getCelerTomlPath: found via findFiles = ${files[0].fsPath}`);
+            return files[0].fsPath;
+        }
+
+        this.outputChannel.appendLine('[DEBUG] getCelerTomlPath: celer.toml not found');
         return undefined;
     }
 
@@ -200,10 +215,13 @@ export class Celer {
         try {
             const content = fs.readFileSync(tomlPath, 'utf-8');
             const parsed = tomlParse(content) as any;
-            
-            // Support both root level and [global] section
-            const section = parsed.global || parsed;
-            
+
+            // Log parsed keys for debugging (avoid serializing BigInt values)
+            this.outputChannel.appendLine(`[DEBUG] Parsed celer.toml keys: ${JSON.stringify(Object.keys(parsed))}`);
+
+            // Try multiple possible section names (celer may have changed the TOML structure)
+            const section = parsed.main || parsed.global || parsed.workspace || parsed.build || parsed.settings || parsed;
+
             const config: CelerConfig = {
                 platforms: Array.isArray(section.platforms) ? section.platforms : [],
                 projects: Array.isArray(section.projects) ? section.projects : [],
@@ -212,6 +230,8 @@ export class Celer {
                 currentBuildType: section.build_type,
                 jobs: section.jobs ? parseInt(section.jobs) : undefined
             };
+
+            this.outputChannel.appendLine(`[DEBUG] Read config: platform=${config.currentPlatform}, project=${config.currentProject}, buildType=${config.currentBuildType}, jobs=${config.jobs}`);
 
             return config;
         } catch (error) {
@@ -225,19 +245,19 @@ export class Celer {
             // Use celer configure command and wait for completion
             if (config.currentPlatform !== undefined) {
                 this.outputChannel.appendLine(`[INFO] Setting platform to: ${config.currentPlatform}`);
-                await this.runCommand(['configure', '--platform', config.currentPlatform]);
+                await this.runCommand(['configure', `--platform=${config.currentPlatform}`]);
                 this.outputChannel.appendLine(`[SUCCESS] Platform set to: ${config.currentPlatform}`);
             }
-            
+
             if (config.currentProject !== undefined) {
                 this.outputChannel.appendLine(`[INFO] Setting project to: ${config.currentProject}`);
-                await this.runCommand(['configure', '--project', config.currentProject]);
+                await this.runCommand(['configure', `--project=${config.currentProject}`]);
                 this.outputChannel.appendLine(`[SUCCESS] Project set to: ${config.currentProject}`);
             }
-            
+
             if (config.currentBuildType !== undefined) {
                 this.outputChannel.appendLine(`[INFO] Setting build type to: ${config.currentBuildType}`);
-                await this.runCommand(['configure', '--build-type', config.currentBuildType]);
+                await this.runCommand(['configure', `--build-type=${config.currentBuildType}`]);
                 this.outputChannel.appendLine(`[SUCCESS] Build type set to: ${config.currentBuildType}`);
             }
 
