@@ -4,6 +4,7 @@
   "description": "Graphical interface for Celer package manager operations",
   "version": "0.0.1",
   "publisher": "celer",
+  "icon": "resources/logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/celer-pkg/celer-vscode.git"
