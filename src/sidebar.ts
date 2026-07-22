@@ -39,7 +39,6 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
             }
             case 'setting': {
                 await this.celerManager.runCommandInTerminal(['configure', `--${msg.key}=${msg.value}`]);
-                await this.refresh();
                 break;
             }
             case 'pickFolder': {
@@ -76,6 +75,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         const downloads = toml.downloads;
         const cpuCount = os.cpus().length;
         const padWidth = String(cpuCount).length;
+        const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir();
 
         const platform = config?.currentPlatform || 'Not set';
         const project = config?.currentProject || 'Not set';
@@ -164,15 +164,16 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .cmd-icon { width: 16px; text-align: center; flex-shrink: 0; }
     .divider { height: 1px; background: var(--vscode-sideBar-border, var(--input-border)); margin: 6px 8px; opacity: 0.4; }
 
-    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 8px; min-height: 26px; }
-    .setting-label { font-size: 12px; flex: 1; }
-    .setting-val { width: 110px; background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--input-border); border-radius: 2px; padding: 2px 4px; font-size: 11px; outline: none; }
+    .setting-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px; padding: 3px 8px; min-height: 26px; }
+    .setting-label { font-size: 12px; white-space: nowrap; }
+    .setting-row-wrap { display: flex; width: 100%; }
+    .setting-val { flex: 1; background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--input-border); border-radius: 2px; padding: 2px 4px; font-size: 11px; outline: none; min-width: 0; }
     .setting-val:focus { border-color: var(--focus-border); }
-    .setting-folder { background: transparent; border: 1px solid var(--input-border); border-left: none; border-radius: 0 2px 2px 0; color: var(--vscode-sideBar-foreground); cursor: pointer; padding: 2px 5px; font-size: 11px; }
+    .setting-folder { flex-shrink: 0; background: transparent; border: 1px solid var(--input-border); border-left: none; border-radius: 0 2px 2px 0; color: var(--vscode-sideBar-foreground); cursor: pointer; padding: 2px 5px; font-size: 11px; }
     .setting-folder:hover { background: var(--hover-bg); }
-    .setting-row-wrap { display: flex; }
 
     .toggle { position: relative; display: inline-block; width: 30px; height: 17px; flex-shrink: 0; cursor: pointer; }
+    .setting-row .toggle { justify-self: end; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle-slider { position: absolute; inset: 0; border-radius: 17px; background: var(--vscode-input-border); transition: background .2s; }
     .toggle-slider::before { content: ''; position: absolute; height: 13px; width: 13px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -201,7 +202,8 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .drawer.open .drawer-body { display: block; }
     .drawer.open .drawer-header { background: var(--vscode-list-inactiveSelectionBackground); }
 
-    .setting-group { margin: 2px 4px; border: 1px solid var(--input-border); border-radius: 3px; overflow: hidden; }
+    .setting-group { margin: 2px 4px; padding: 2px 0; border: 1px solid var(--input-border); border-radius: 3px; overflow: hidden; }
+    .setting-group .setting-row { margin: 0; padding: 3px 8px; }
     .setting-group-header { padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; color: var(--vscode-descriptionForeground); }
     .setting-group-header:hover { background: var(--hover-bg); }
     .setting-group-body { display: none; }
@@ -230,41 +232,12 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
 
-<div class="drawer open">
-    <div class="drawer-header">Setup</div>
-    <div class="drawer-body">
-        <div class="setup-form">
-            <div class="setup-title">NFS Server</div>
-            <div class="setup-row">
-                <input class="setup-input" type="text" id="nfs-server" placeholder="/srv/celer-cache">
-                <button class="setup-folder" data-for="nfs-server">\u{1F4C1}</button>
-            </div>
-            <div class="setup-actions">
-                <button class="btn-remove" data-setup="nfs-server">Remove</button>
-                <button class="btn-setup" data-setup="nfs-server">Setup</button>
-            </div>
-        </div>
-        <div class="setup-form">
-            <div class="setup-title">NFS Client</div>
-            <div class="setup-row">
-                <input class="setup-input" type="text" id="nfs-client-mount" placeholder="Mount: /home/user/cache">
-                <button class="setup-folder" data-for="nfs-client-mount">\u{1F4C1}</button>
-            </div>
-            <input class="setup-input" type="text" id="nfs-client-server" placeholder="Server: 10.0.8.60:/mnt/data/cache">
-            <div class="setup-actions">
-                <button class="btn-remove" data-setup="nfs-client">Remove</button>
-                <button class="btn-setup" data-setup="nfs-client">Setup</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="drawer">
     <div class="drawer-header">Configure</div>
     <div class="drawer-body">
         ${combos}
         <div class="divider"></div>
-        ${this.settingsHtml(main, pkgcache, ccache, proxy, downloads)}
+        ${this.settingsHtml(main, pkgcache, ccache, proxy, downloads, wsRoot)}
     </div>
 </div>
 
@@ -288,8 +261,56 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     </div>
 </div>
 
+<div class="drawer open">
+    <div class="drawer-header">Setup</div>
+    <div class="drawer-body">
+        <div class="setup-form">
+            <div class="setup-title">NFS Server</div>
+            <div class="setup-row">
+                <input class="setup-input" type="text" id="nfs-server" placeholder="/srv/celer-cache">
+                <button class="setup-folder" data-for="nfs-server">\u{1F4C1}</button>
+            </div>
+            <div class="setup-actions">
+                <button class="btn-remove" data-setup="nfs-server">Remove</button>
+                <button class="btn-setup" data-setup="nfs-server">Setup</button>
+            </div>
+        </div>
+        <div class="setup-form">
+            <div class="setup-title">NFS Client</div>
+            <div class="setup-row">
+                <input class="setup-input" type="text" id="nfs-client-mount" placeholder="Mount: /home/user/cache">
+                <button class="setup-folder" data-for="nfs-client-mount">\u{1F4C1}</button>
+            </div>
+            <input class="setup-input" type="text" id="nfs-client-server" placeholder="Server: 192.168.1.1:/mnt/data/cache">
+            <div class="setup-actions">
+                <button class="btn-remove" data-setup="nfs-client">Remove</button>
+                <button class="btn-setup" data-setup="nfs-client">Setup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const vscodeApi = acquireVsCodeApi();
+
+// ── Restore drawer & setting-group state after refresh ──
+var savedState = vscodeApi.getState() || {};
+if (savedState.drawers) {
+    document.querySelectorAll('.drawer').forEach(function(d) {
+        var h = d.querySelector('.drawer-header');
+        var name = h ? h.textContent.trim() : '';
+        if (savedState.drawers[name]) { d.classList.add('open'); }
+        else { d.classList.remove('open'); }
+    });
+}
+if (savedState.settingGroups) {
+    document.querySelectorAll('.setting-group').forEach(function(g) {
+        var groupId = g.dataset.group;
+        if (groupId && savedState.settingGroups[groupId]) { g.classList.add('open'); }
+        else { g.classList.remove('open'); }
+    });
+}
+
 const comboOptions = ${JSON.stringify({ platforms, projects, buildTypes, jobOptions }).replace(/</g, '\\u003c')};
 
 document.querySelectorAll('.combo-wrap').forEach(wrap => {
@@ -397,11 +418,24 @@ document.querySelectorAll('.btn-setup, .btn-remove').forEach(btn => {
 });
 
 document.querySelectorAll('.drawer-header').forEach(header => {
-    header.addEventListener('click', () => header.parentElement.classList.toggle('open'));
+    header.addEventListener('click', () => {
+        header.parentElement.classList.toggle('open');
+        var state = vscodeApi.getState() || {};
+        if (!state.drawers) { state.drawers = {}; }
+        state.drawers[header.textContent.trim()] = header.parentElement.classList.contains('open');
+        vscodeApi.setState(state);
+    });
 });
 
 document.querySelectorAll('.setting-group-header').forEach(header => {
-    header.addEventListener('click', () => header.parentElement.classList.toggle('open'));
+    header.addEventListener('click', () => {
+        header.parentElement.classList.toggle('open');
+        var state = vscodeApi.getState() || {};
+        if (!state.settingGroups) { state.settingGroups = {}; }
+        var groupId = header.parentElement.dataset.group;
+        state.settingGroups[groupId] = header.parentElement.classList.contains('open');
+        vscodeApi.setState(state);
+    });
 });
 </script>
 </body>
@@ -422,8 +456,9 @@ document.querySelectorAll('.setting-group-header').forEach(header => {
         </div>`;
     }
 
-    private settingsHtml(main: any, pkgcache: any, ccache: any, proxy: any, downloads: string | undefined): string {
+    private settingsHtml(main: any, pkgcache: any, ccache: any, proxy: any, downloads: string | undefined, wsRoot: string): string {
         const e = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const dlHint = e(wsRoot.replace(/\\/g, '/') + '/downloads');
 
         const toggle = (key: string, label: string, checked: any) => `
         <div class="setting-row">
@@ -446,9 +481,17 @@ document.querySelectorAll('.setting-group-header').forEach(header => {
             <div class="setting-group-body">${body}</div>
         </div>`;
 
-        return toggle('offline', 'Offline Mode', main.offline) +
-            toggle('verbose', 'Verbose Output', main.verbose) +
-            textRow('downloads', 'Download Dir', downloads, true) +
+        return '<div class="setting-group">' + toggle('offline', 'Offline Mode', main.offline) + '</div>' +
+            '<div class="setting-group">' + toggle('verbose', 'Verbose Output', main.verbose) + '</div>' +
+            `<div class="setting-group">
+                <div class="setting-row">
+                    <span class="setting-label">Downloads</span>
+                    <div class="setting-row-wrap">
+                        <input class="setting-val" type="text" data-key="downloads" value="${e(downloads)}" placeholder="${dlHint}" data-default="${dlHint}">
+                        <button class="setting-folder" data-folder="downloads" data-default="${dlHint}">\u{1F4C1}</button>
+                    </div>
+                </div>
+            </div>` +
             group('pkgcache', 'Package Cache',
                 textRow('pkgcache-dir', 'Cache Dir', pkgcache.dir, true) +
                 toggle('pkgcache-writable', 'Writable', pkgcache.writable) +
