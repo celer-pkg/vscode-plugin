@@ -58,12 +58,12 @@ export function registerInitCommand(context: vscode.ExtensionContext, celer: Cel
             forceInit = forceOptions.value;
         }
 
-        const args = ['init', `-u=${url}`];
+        const args = ['init', `--url=${url}`];
         if (branch) {
-            args.push(`-b=${branch}`);
+            args.push(`--branch=${branch}`);
         }
         if (forceInit) {
-            args.push('-f');
+            args.push('--force');
         }
         await celer.runCommandInTerminal(args);
         // Set context after terminal command (assumes success)

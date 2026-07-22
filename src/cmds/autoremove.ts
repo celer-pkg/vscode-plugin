@@ -9,8 +9,8 @@ export function registerAutoremoveCommand(context: vscode.ExtensionContext, cele
         // Show options for multi-select
         const options = await vscode.window.showQuickPick(
             [
-                { label: '$(trash) Build Cache', description: 'Remove packages along with build cache (-c)', picked: false, flag: '-c' },
-                { label: '$(file) Purge', description: 'Remove packages along with its package file (-p)', picked: false, flag: '-p' }
+                { label: '$(trash) Build Cache', description: 'Remove packages along with build cache (--build-cache)', picked: false, flag: '--build-cache' },
+                { label: '$(file) Purge', description: 'Remove packages along with its package file (--purge)', picked: false, flag: '--purge' }
             ],
             { 
                 placeHolder: 'Select autoremove options (multi-select, or skip for normal autoremove)',

@@ -97,7 +97,7 @@ export function registerReverseCommand(context: vscode.ExtensionContext, celer: 
         
         // Add --dev flag if the option is selected
         if (options && options.length > 0) {
-            args.push('-d');
+            args.push('--dev');
         }
 
         // Add package name at the end

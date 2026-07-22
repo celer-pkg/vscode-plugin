@@ -20,6 +20,33 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "celer-sidebar",
+          "title": "Celer",
+          "icon": "$(package)"
+        }
+      ]
+    },
+    "views": {
+      "celer-sidebar": [
+        {
+          "id": "celer.sidebar",
+          "name": "Packages",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "celer.sidebarRefresh",
+          "when": "view == celer.sidebar",
+          "group": "navigation"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "celer.init",
@@ -114,6 +141,21 @@
       {
         "command": "celer.resetFirstRun",
         "title": "Celer: Reset First Run Status"
+      },
+      {
+        "command": "celer.nfsClient",
+        "title": "Celer: Setup NFS Client",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "celer.nfsServer",
+        "title": "Celer: Setup NFS Server",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "celer.sidebarRefresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
     "configuration": {

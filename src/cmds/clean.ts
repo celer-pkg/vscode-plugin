@@ -87,8 +87,8 @@ export function registerCleanCommand(context: vscode.ExtensionContext, celer: Ce
         // Show options for multi-select
         const options = await vscode.window.showQuickPick(
             [
-                { label: '$(beaker) Dev Mode', description: 'Clean package/project for dev mode (-d)', picked: false, flag: '-d' },
-                { label: '$(layers) Recursive', description: 'Clean package along with its dependencies (-r)', picked: false, flag: '-r' }
+                { label: '$(beaker) Dev Mode', description: 'Clean package/project for dev mode (--dev)', picked: false, flag: '--dev' },
+                { label: '$(layers) Recursive', description: 'Clean package along with its dependencies (--recursive)', picked: false, flag: '--recursive' }
             ],
             { 
                 placeHolder: 'Select clean options (multi-select, or skip for normal clean)',
@@ -115,7 +115,7 @@ export function registerCleanCommand(context: vscode.ExtensionContext, celer: Ce
         const args: string[] = ['clean'];
         
         if (cleanTarget.value === 'all') {
-            args.push('-a');
+            args.push('--all');
         }
 
         // Add selected flags

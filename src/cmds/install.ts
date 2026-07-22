@@ -72,10 +72,10 @@ export function registerInstallCommand(context: vscode.ExtensionContext, celer: 
         // Show all options for multi-select
         const options = await vscode.window.showQuickPick(
             [
-                { label: '$(beaker) Dev Dependency', description: 'Install as development dependency (-d)', picked: false, flag: '-d' },
-                { label: '$(sync) Force', description: 'Force reinstallation (-f)', picked: false, flag: '-f' },
-                { label: '$(layers) Recursive', description: 'Recursively reinstall dependencies (requires -f) (-r)', picked: false, flag: '-r' },
-                { label: '$(comment) Verbose', description: 'Enable verbose output (-v)', picked: false, flag: '-v' }
+                { label: '$(beaker) Dev Dependency', description: 'Install as development dependency (--dev)', picked: false, flag: '--dev' },
+                { label: '$(sync) Force', description: 'Force reinstallation (--force)', picked: false, flag: '--force' },
+                { label: '$(layers) Recursive', description: 'Recursively reinstall dependencies (requires --force) (--recursive)', picked: false, flag: '--recursive' },
+                { label: '$(comment) Verbose', description: 'Enable verbose output (--verbose)', picked: false, flag: '--verbose' }
             ],
             { 
                 placeHolder: 'Select installation options (multi-select, or skip for normal install)',

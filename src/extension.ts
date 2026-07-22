@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Celer } from './celer';
 import { StatusBarManager } from './statusbar';
+import { CelerSidebarProvider } from './sidebar';
 import { CelerInstaller } from './installer';
 import {
     registerInitCommand,
@@ -17,11 +18,13 @@ import {
     registerConfigureCommand,
     registerVersionCommand,
     registerSelectCommands,
-    registerSelectJobsCommand
+    registerSelectJobsCommand,
+    registerNfsCommands
 } from './cmds';
 
 let celer: Celer;
 let statusBarManager: StatusBarManager;
+let celerSidebar: CelerSidebarProvider;
 let celerInstaller: CelerInstaller;
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -64,11 +67,22 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    // Create status bar items (bottom bar UI)
+    // Create status bar items (bottom bar UI) — minimal: only when project exists
     if (hasCelerProject) {
         statusBarManager.createStatusBarItems();
         await statusBarManager.updateStatusBarItems();
     }
+
+    // Register sidebar webview provider (left sidebar)
+    celerSidebar = new CelerSidebarProvider(celer);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(CelerSidebarProvider.viewType, celerSidebar)
+    );
+
+    // Register sidebar refresh command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('celer.sidebarRefresh', () => celerSidebar.refresh())
+    );
 
     // Register installer commands
     context.subscriptions.push(
@@ -98,6 +112,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerVersionCommand(context, celer);
     registerSelectCommands(context, celer, statusBarManager);
     registerSelectJobsCommand(context, celer, statusBarManager);
+    registerNfsCommands(context, celer);
 
     // Register status bar menu toggle command
     context.subscriptions.push(
@@ -118,6 +133,7 @@ export async function activate(context: vscode.ExtensionContext) {
         clearTimeout(changeTimer);
         changeTimer = setTimeout(async () => {
             await statusBarManager.updateStatusBarItems();
+            celerSidebar.refresh();
         }, 300);
     });
 
@@ -125,6 +141,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand('setContext', 'celer.hasCelerProject', true);
         statusBarManager.createStatusBarItems();
         await statusBarManager.updateStatusBarItems();
+        celerSidebar.refresh();
     });
 
     watcher.onDidDelete(async () => {

@@ -39,35 +39,86 @@ export function registerCreateCommand(context: vscode.ExtensionContext, celer: C
             // Execute create command in terminal
             await celer.runCommandInTerminal(['create', `--${createType.value}=${name}`]);
 
-            // Wait for command to complete and file to be created
-            await new Promise(resolve => setTimeout(resolve, 2500));
-
-            // Try to open the newly created toml file
+            // Poll for the created file to appear (up to 10s)
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (workspaceFolder) {
-                let tomlPath = '';
-                if (createType.value === 'platform') {
-                    tomlPath = path.join(workspaceFolder, 'conf', 'platforms', `${name}.toml`);
-                } else if (createType.value === 'project') {
-                    tomlPath = path.join(workspaceFolder, 'conf', 'projects', `${name}.toml`);
-                } else if (createType.value === 'port') {
-                    const portName = name.split('@')[0];
-                    tomlPath = path.join(workspaceFolder, 'ports', portName, `${portName}.toml`);
-                }
-                
-                if (tomlPath && fs.existsSync(tomlPath)) {
-                    try {
-                        const doc = await vscode.workspace.openTextDocument(tomlPath);
-                        await vscode.window.showTextDocument(doc);
-                    } catch (error) {
-                        vscode.window.showWarningMessage(`File created but could not be opened: ${error}`);
-                    }
-                } else if (tomlPath) {
-                    // If file doesn't exist after waiting, show a message
-                    vscode.window.showWarningMessage(`File was not found at ${tomlPath}. Check terminal for errors.`);
+                const tomlPath = await waitForCreatedFile(workspaceFolder, createType.value, name);
+                if (tomlPath) {
+                    const doc = await vscode.workspace.openTextDocument(tomlPath);
+                    await vscode.window.showTextDocument(doc);
+                } else {
+                    vscode.window.showWarningMessage(
+                        `${createType.label} created but file not detected. Check ports/${name.split('@')[0].charAt(0)}/${name.split('@')[0]}/ directory.`
+                    );
                 }
             }
         }
     })
     );
+}
+
+/** Poll for a created file to appear, returns path or undefined after timeout */
+async function waitForCreatedFile(workspace: string, type: string, name: string): Promise<string | undefined> {
+    const searchDir = getSearchDir(workspace, type, name);
+
+    for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 500));
+
+        // Check exact path first
+        const exact = resolveCreatedPath(workspace, type, name);
+        if (exact && fs.existsSync(exact)) { return exact; }
+
+        // Fuzzy: find newest file in expected directory tree
+        const fuzzy = findCreatedFile(searchDir);
+        if (fuzzy) { return fuzzy; }
+    }
+    return undefined;
+}
+
+function getSearchDir(workspace: string, type: string, name: string): string {
+    if (type === 'platform') { return path.join(workspace, 'conf', 'platforms'); }
+    if (type === 'project') { return path.join(workspace, 'conf', 'projects'); }
+    // ports are stored under first-letter subdirectory: ports/o/opencv/
+    return path.join(workspace, 'ports');
+}
+
+/** Resolve the expected path for a created entity */
+function resolveCreatedPath(workspace: string, type: string, name: string): string | undefined {
+    if (type === 'platform') {
+        return path.join(workspace, 'conf', 'platforms', `${name}.toml`);
+    }
+    if (type === 'project') {
+        return path.join(workspace, 'conf', 'projects', `${name}.toml`);
+    }
+    // port: stored as ports/<first-letter>/<name>/
+    const portName = name.split('@')[0];
+    const portDir = path.join(workspace, 'ports', portName.charAt(0).toLowerCase(), portName);
+    for (const f of ['portfile.celer', 'celer.toml', `${portName}.toml`]) {
+        if (fs.existsSync(path.join(portDir, f))) { return path.join(portDir, f); }
+    }
+    return undefined;
+}
+
+/** Find the most recently modified file in a directory (recursive for ports) */
+function findCreatedFile(searchDir: string): string | undefined {
+    try {
+        if (!fs.existsSync(searchDir)) { return undefined; }
+        const files: string[] = [];
+        collectFiles(searchDir, files);
+        if (files.length === 0) { return undefined; }
+        files.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+        return files[0];
+    } catch {
+        return undefined;
+    }
+}
+
+function collectFiles(dir: string, result: string[]): void {
+    try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isFile()) { result.push(full); }
+            else if (entry.isDirectory()) { collectFiles(full, result); }
+        }
+    } catch { /* skip */ }
 }

@@ -473,13 +473,32 @@ export class Celer {
 
     async getInstalledPackages(): Promise<string[]> {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            return [];
+        if (!workspaceFolder) { return []; }
+
+        // Read current config for filtering
+        const config = await this.readCelerConfig().catch(() => ({} as CelerConfig));
+        const platform = config.currentPlatform;
+        const buildType = config.currentBuildType;
+        const project = config.currentProject;
+
+        // ── Try packages/ directory (structured by platform/build_type/project) ──
+        const packagesPath = path.join(workspaceFolder.uri.fsPath, 'packages');
+        if (fs.existsSync(packagesPath)) {
+            try {
+                const packages = this.scanPackagesDir(packagesPath, platform, buildType, project);
+                if (packages.length > 0) {
+                    this.outputChannel.appendLine(`[INFO] Found ${packages.length} installed packages in packages/ (filtered by platform/build_type/project)`);
+                    return packages;
+                }
+            } catch (error) {
+                this.outputChannel.appendLine(`[ERROR] Failed to read packages/: ${error}`);
+            }
         }
 
+        // ── Fallback: buildtrees/ directory ──
         const buildtreesPath = path.join(workspaceFolder.uri.fsPath, 'buildtrees');
         if (!fs.existsSync(buildtreesPath)) {
-            this.outputChannel.appendLine(`[INFO] buildtrees directory not found: ${buildtreesPath}`);
+            this.outputChannel.appendLine(`[INFO] Neither packages/ nor buildtrees/ directory found`);
             return [];
         }
 
@@ -489,13 +508,76 @@ export class Celer {
                 .filter(dirent => dirent.isDirectory())
                 .map(dirent => dirent.name)
                 .sort();
-            
+
             this.outputChannel.appendLine(`[INFO] Found ${packages.length} installed packages in buildtrees`);
             return packages;
         } catch (error) {
             this.outputChannel.appendLine(`[ERROR] Failed to read buildtrees: ${error}`);
             return [];
         }
+    }
+
+    /**
+     * Scan packages/ directory for installed packages, filtered by platform/buildType/project.
+     * Recursively walks the tree; only returns leaf directories whose names look like
+     * packages (contain '@'), and whose ancestor path matches the filter criteria.
+     */
+    private scanPackagesDir(basePath: string, platform?: string, buildType?: string, project?: string): string[] {
+        const result: string[] = [];
+        const filterParts = [platform, buildType, project].filter(Boolean) as string[];
+
+        this.walkPackages(basePath, [], filterParts, result);
+        return [...new Set(result)].sort();
+    }
+
+    /**
+     * Recursively walk packages/ directory. Only collect dirs that look like packages
+     * (name contains '@'), and whose full relative path contains all filter parts.
+     */
+    private walkPackages(
+        currentPath: string,
+        pathSegments: string[],
+        filterParts: string[],
+        result: string[],
+        depth: number = 0
+    ): void {
+        if (depth > 5) { return; } // safety limit
+        try {
+            const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) { continue; }
+
+                const isPkg = entry.name.includes('@');
+
+                if (isPkg) {
+                    // Check if this package's ancestor path matches all filter parts
+                    const fullRelativePath = [...pathSegments, entry.name].join('/');
+                    const matches = filterParts.length === 0 ||
+                        filterParts.every(part => fullRelativePath.includes(part));
+                    if (matches) {
+                        result.push(entry.name);
+                    }
+                } else {
+                    // Recurse deeper
+                    this.walkPackages(
+                        path.join(currentPath, entry.name),
+                        [...pathSegments, entry.name],
+                        filterParts,
+                        result,
+                        depth + 1
+                    );
+                }
+            }
+        } catch { /* ignore permission errors */ }
+    }
+
+    private collectDirs(dirPath: string, result: string[]): void {
+        try {
+            const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory()) { result.push(entry.name); }
+            }
+        } catch { /* ignore */ }
     }
 
     async getAvailablePorts(): Promise<string[]> {

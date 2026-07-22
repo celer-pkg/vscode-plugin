@@ -22,12 +22,12 @@ export function registerUpdateCommand(context: vscode.ExtensionContext, celer: C
         switch (updateType.value) {
             case 'conf-repo':
                 // Update conf repository
-                await celer.runCommandInTerminal(['update', '-c']);
+                await celer.runCommandInTerminal(['update', '--conf-repo']);
                 break;
 
             case 'ports-repo':
                 // Update ports repository
-                await celer.runCommandInTerminal(['update', '-p']);
+                await celer.runCommandInTerminal(['update', '--ports-repo']);
                 break;
 
             case 'ports': {
@@ -71,33 +71,23 @@ export function registerUpdateCommand(context: vscode.ExtensionContext, celer: C
                     return;
                 }
 
-                // Ask for update options
+                // Ask for optional flags (multi-select)
                 const options = await vscode.window.showQuickPick(
                     [
-                        { label: '$(sync) Normal Update', value: 'normal', description: 'Update selected packages' },
-                        { label: '$(git-branch) Recursive Update', value: 'recursive', description: 'Update packages and all dependencies' },
-                        { label: '$(warning) Force Update', value: 'force', description: 'Force update (overwrites local changes)' },
-                        { label: '$(issue-reopened) Recursive + Force', value: 'recursive-force', description: 'Recursive and force update' }
+                        { label: '$(layers) Recursive', description: 'Update packages and all dependencies (--recursive)', picked: false, flag: '--recursive' },
+                        { label: '$(warning) Force', description: 'Force update, overwrites local changes (--force)', picked: false, flag: '--force' }
                     ],
-                    { placeHolder: 'Select update mode' }
+                    { placeHolder: 'Select update options (multi-select, or skip for normal update)', canPickMany: true }
                 );
 
-                if (!options) {
+                if (options === undefined) {
                     return;
                 }
 
                 // Build command arguments
                 const args = ['update'];
+                for (const opt of options) { args.push((opt as any).flag); }
                 const packageNames = selectedPackages.map(item => item.label);
-                
-                if (options.value === 'recursive') {
-                    args.push('-r');
-                } else if (options.value === 'force') {
-                    args.push('-f');
-                } else if (options.value === 'recursive-force') {
-                    args.push('-r', '-f');
-                }
-                
                 args.push(...packageNames);
 
                 // Execute update in terminal
