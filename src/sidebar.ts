@@ -331,6 +331,7 @@ document.querySelectorAll('.combo-wrap').forEach(wrap => {
         else if (e.key === 'Enter') { e.preventDefault(); if (highlightIdx >= 0 && opts[highlightIdx]) opts[highlightIdx].dispatchEvent(new MouseEvent('mousedown', {bubbles: true})); }
         else if (e.key === 'Escape') { closeDropdown(); input.value = input.dataset.orig || ''; }
     });
+    input.addEventListener('blur', () => setTimeout(closeDropdown, 150));
     document.addEventListener('click', e => { if (!wrap.contains(e.target)) closeDropdown(); });
 });
 
