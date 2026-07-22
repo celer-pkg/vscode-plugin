@@ -392,6 +392,9 @@ function updateSetupBtns(mode) {
     let ok;
     if (mode === 'nfs-server') {
         ok = document.getElementById('nfs-server').value.trim() !== '';
+    } else if (mode === 'proxy') {
+        ok = document.getElementById('proxy-host').value.trim() !== '' &&
+             document.getElementById('proxy-port').value.trim() !== '';
     } else {
         ok = document.getElementById('nfs-client-mount').value.trim() !== '' &&
              document.getElementById('nfs-client-server').value.trim() !== '';
@@ -409,6 +412,9 @@ document.querySelectorAll('.btn-setup, .btn-remove').forEach(btn => {
         let value;
         if (mode === 'nfs-server') {
             value = document.getElementById('nfs-server').value.trim();
+        } else if (mode === 'proxy') {
+            value = document.getElementById('proxy-host').value.trim() + ':' +
+                    document.getElementById('proxy-port').value.trim();
         } else {
             value = document.getElementById('nfs-client-mount').value.trim() + '@' +
                     document.getElementById('nfs-client-server').value.trim();
@@ -498,10 +504,20 @@ document.querySelectorAll('.setting-group-header').forEach(header => {
                 toggle('pkgcache-cache-artifacts', 'Cache Artifacts', pkgcache.cache_artifacts) +
                 toggle('pkgcache-cache-downloads', 'Cache Downloads', pkgcache.cache_downloads)
             ) +
-            group('proxy', 'HTTP(S) Proxy',
-                textRow('proxy-host', 'Host', proxy.host) +
-                textRow('proxy-port', 'Port', proxy.port)
-            ) +
+            `<div class="setting-group" data-group="proxy">
+                <div class="setting-group-header">\u25B6 HTTP(S) Proxy</div>
+                <div class="setting-group-body">
+                    <div class="setup-form">
+                        <div class="setup-title">Proxy Settings</div>
+                        <input class="setup-input" type="text" id="proxy-host" placeholder="Host: proxy.example.com" value="${e(proxy.host)}">
+                        <input class="setup-input" type="text" id="proxy-port" placeholder="Port: 8080" value="${e(proxy.port)}">
+                        <div class="setup-actions">
+                            <button class="btn-remove" data-setup="proxy">Remove</button>
+                            <button class="btn-setup" data-setup="proxy">Setup</button>
+                        </div>
+                    </div>
+                </div>
+            </div>` +
             group('ccache', 'CCache',
                 toggle('ccache-enabled', 'Enabled', ccache.enabled) +
                 textRow('ccache-dir', 'Directory', ccache.dir, true) +
