@@ -56,6 +56,13 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
                 vscode.commands.executeCommand(msg.id);
                 break;
             }
+            case 'setup': {
+                const cmd = `sudo celer setup --${msg.mode}=${msg.value}` + (msg.remove ? ' --remove' : '');
+                const terminal = vscode.window.createTerminal('Celer Setup');
+                terminal.show();
+                terminal.sendText(cmd);
+                break;
+            }
         }
     }
 
@@ -200,6 +207,25 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .setting-group-body { display: none; }
     .setting-group.open .setting-group-body { display: block; }
     .setting-group.open .setting-group-header { border-bottom: 1px solid var(--input-border); }
+
+    .setup-form { margin: 4px 8px; padding: 6px 8px; border: 1px solid var(--input-border); border-radius: 3px; }
+    .setup-form + .setup-form { margin-top: 6px; }
+    .setup-title { font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--vscode-descriptionForeground); }
+    .setup-input { flex: 1; background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--input-border); padding: 3px 5px; font-size: 11px; outline: none; min-width: 0; }
+    .setup-row .setup-input { border-right: none; border-radius: 2px 0 0 2px; }
+    .setup-input:not(.setup-row .setup-input) { border-radius: 2px; width: 100%; }
+    .setup-input:focus { border-color: var(--focus-border); }
+    .setup-row { display: flex; }
+    .setup-row + .setup-input, .setup-row + .setup-row { margin-top: 3px; }
+    .setup-folder { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 0 2px 2px 0; color: var(--vscode-sideBar-foreground); cursor: pointer; padding: 2px 5px; font-size: 11px; }
+    .setup-folder:hover { background: var(--hover-bg); }
+    .setup-actions { display: flex; gap: 4px; margin-top: 5px; }
+    .btn-setup, .btn-remove { flex: 1; border: none; border-radius: 2px; padding: 4px 0; font-size: 11px; cursor: pointer; }
+    .btn-remove { background: transparent; color: var(--vscode-errorForeground); border: 1px solid var(--vscode-input-border); }
+    .btn-remove:hover:not(:disabled) { background: var(--vscode-toolbar-hoverBackground); }
+    .btn-setup { background: transparent; color: var(--vscode-textLink-foreground); border: 1px solid var(--vscode-textLink-foreground); }
+    .btn-setup:hover:not(:disabled) { background: var(--vscode-toolbar-hoverBackground); }
+    .btn-setup:disabled, .btn-remove:disabled { opacity: 0.4; cursor: default; }
 </style>
 </head>
 <body>
@@ -207,9 +233,28 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
 <div class="drawer open">
     <div class="drawer-header">Setup</div>
     <div class="drawer-body">
-        <div class="cmd-grid">
-            <button class="cmd-btn" data-cmd="celer.nfsClient"><span class="cmd-icon">\u{1F4E4}</span> NFS Client</button>
-            <button class="cmd-btn" data-cmd="celer.nfsServer"><span class="cmd-icon">\u{1F4E5}</span> NFS Server</button>
+        <div class="setup-form">
+            <div class="setup-title">NFS Server</div>
+            <div class="setup-row">
+                <input class="setup-input" type="text" id="nfs-server" placeholder="/srv/celer-cache">
+                <button class="setup-folder" data-for="nfs-server">\u{1F4C1}</button>
+            </div>
+            <div class="setup-actions">
+                <button class="btn-remove" data-setup="nfs-server">Remove</button>
+                <button class="btn-setup" data-setup="nfs-server">Setup</button>
+            </div>
+        </div>
+        <div class="setup-form">
+            <div class="setup-title">NFS Client</div>
+            <div class="setup-row">
+                <input class="setup-input" type="text" id="nfs-client-mount" placeholder="Mount: /home/user/cache">
+                <button class="setup-folder" data-for="nfs-client-mount">\u{1F4C1}</button>
+            </div>
+            <input class="setup-input" type="text" id="nfs-client-server" placeholder="Server: 10.0.8.60:/mnt/data/cache">
+            <div class="setup-actions">
+                <button class="btn-remove" data-setup="nfs-client">Remove</button>
+                <button class="btn-setup" data-setup="nfs-client">Setup</button>
+            </div>
         </div>
     </div>
 </div>
@@ -310,9 +355,44 @@ document.querySelectorAll('.setting-folder').forEach(btn => {
 
 window.addEventListener('message', e => {
     if (e.data?.type === 'folderResult') {
-        const input = document.querySelector('.setting-val[data-key="' + e.data.key + '"]');
-        if (input) { input.value = e.data.path; input.dispatchEvent(new Event('input')); }
+        const el = document.getElementById(e.data.key) || document.querySelector('.setting-val[data-key="' + e.data.key + '"]');
+        if (el) { el.value = e.data.path; el.dispatchEvent(new Event('input')); }
     }
+});
+
+// ── Setup folder pickers ──
+document.querySelectorAll('.setup-folder').forEach(btn => {
+    btn.addEventListener('click', () => vscodeApi.postMessage({ type: 'pickFolder', key: btn.dataset.for }));
+});
+
+// ── Setup forms ──
+function updateSetupBtns(mode) {
+    let ok;
+    if (mode === 'nfs-server') {
+        ok = document.getElementById('nfs-server').value.trim() !== '';
+    } else {
+        ok = document.getElementById('nfs-client-mount').value.trim() !== '' &&
+             document.getElementById('nfs-client-server').value.trim() !== '';
+    }
+    document.querySelectorAll('.btn-setup[data-setup="' + mode + '"], .btn-remove[data-setup="' + mode + '"]').forEach(b => b.disabled = !ok);
+}
+document.querySelectorAll('.setup-input').forEach(el => {
+    el.addEventListener('input', () => updateSetupBtns(el.closest('.setup-form').querySelector('.btn-setup').dataset.setup));
+    el.dispatchEvent(new Event('input'));
+});
+document.querySelectorAll('.btn-setup, .btn-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mode = btn.dataset.setup;
+        const remove = btn.classList.contains('btn-remove');
+        let value;
+        if (mode === 'nfs-server') {
+            value = document.getElementById('nfs-server').value.trim();
+        } else {
+            value = document.getElementById('nfs-client-mount').value.trim() + '@' +
+                    document.getElementById('nfs-client-server').value.trim();
+        }
+        vscodeApi.postMessage({ type: 'setup', mode, value, remove });
+    });
 });
 
 document.querySelectorAll('.drawer-header').forEach(header => {
