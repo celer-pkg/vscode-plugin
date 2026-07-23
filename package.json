@@ -2,7 +2,7 @@
   "name": "celer",
   "displayName": "Celer - C/C++ Package Manager",
   "description": "GUI plugin for Celer Package Manager",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "celer",
   "icon": "resources/logo.png",
   "repository": {
