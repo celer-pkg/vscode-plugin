@@ -56,8 +56,22 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
                 break;
             }
             case 'setup': {
-                const cmd = `sudo celer setup --${msg.mode}=${msg.value}` + (msg.remove ? ' --remove' : '');
-                const terminal = vscode.window.createTerminal('Celer Setup');
+                let cmd: string;
+                if (msg.mode === 'proxy') {
+                    const [host, port] = msg.value.split(':');
+                    if (msg.remove) {
+                        cmd = `celer configure --proxy-host= --proxy-port=`;
+                    } else {
+                        cmd = `celer configure --proxy-host=${host} --proxy-port=${port}`;
+                    }
+                } else {
+                    cmd = `sudo celer setup --${msg.mode}=${msg.value}` + (msg.remove ? ' --remove' : '');
+                }
+                const terminalName = 'Celer Setup';
+                let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+                if (!terminal) {
+                    terminal = vscode.window.createTerminal(terminalName);
+                }
                 terminal.show();
                 terminal.sendText(cmd);
                 break;
@@ -76,6 +90,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         const cpuCount = os.cpus().length;
         const padWidth = String(cpuCount).length;
         const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir();
+        const homeDir = os.homedir().replace(/\\/g, '/');
 
         const platform = config?.currentPlatform || 'Not set';
         const project = config?.currentProject || 'Not set';
@@ -267,7 +282,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         <div class="setup-form">
             <div class="setup-title">NFS Server</div>
             <div class="setup-row">
-                <input class="setup-input" type="text" id="nfs-server" placeholder="/srv/celer-cache">
+                <input class="setup-input" type="text" id="nfs-server" placeholder="${homeDir}/celer-cache">
                 <button class="setup-folder" data-for="nfs-server">\u{1F4C1}</button>
             </div>
             <div class="setup-actions">
@@ -278,10 +293,10 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         <div class="setup-form">
             <div class="setup-title">NFS Client</div>
             <div class="setup-row">
-                <input class="setup-input" type="text" id="nfs-client-mount" placeholder="Mount: /home/user/cache">
+                <input class="setup-input" type="text" id="nfs-client-mount" placeholder="Mount: ${homeDir}/cache">
                 <button class="setup-folder" data-for="nfs-client-mount">\u{1F4C1}</button>
             </div>
-            <input class="setup-input" type="text" id="nfs-client-server" placeholder="Server: 192.168.1.1:/mnt/data/cache">
+            <input class="setup-input" type="text" id="nfs-client-server" placeholder="Server: 192.168.1.1:${homeDir}/cache">
             <div class="setup-actions">
                 <button class="btn-remove" data-setup="nfs-client">Remove</button>
                 <button class="btn-setup" data-setup="nfs-client">Setup</button>

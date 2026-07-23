@@ -25,7 +25,7 @@
         {
           "id": "celer-sidebar",
           "title": "Celer",
-          "icon": "$(package)"
+          "icon": "resources/logo-28.png"
         }
       ]
     },
