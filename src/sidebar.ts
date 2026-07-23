@@ -60,7 +60,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
                 if (msg.mode === 'proxy') {
                     const [host, port] = msg.value.split(':');
                     if (msg.remove) {
-                        cmd = `celer configure --proxy-host= --proxy-port=`;
+                        cmd = `celer configure --proxy-remove=true`;
                     } else {
                         cmd = `celer configure --proxy-host=${host} --proxy-port=${port}`;
                     }
@@ -150,9 +150,17 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .combo-arrow {
         display: flex; align-items: center; justify-content: center;
         width: 24px; background: var(--input-bg); border: 1px solid var(--input-border);
-        border-left: none; border-radius: 0 2px 2px 0; cursor: pointer; font-size: 10px;
+        border-left: none; border-radius: 0 2px 2px 0; cursor: pointer;
         color: var(--vscode-sideBar-foreground); user-select: none;
     }
+    .combo-arrow::after {
+        content: ''; display: inline-block; width: 0; height: 0;
+        border-left: 4px solid currentColor;
+        border-top: 2.5px solid transparent;
+        border-bottom: 2.5px solid transparent;
+        transition: transform .15s; opacity: 0.5;
+    }
+    .combo-wrap.open .combo-arrow::after { transform: rotate(90deg); }
     .combo-dropdown {
         display: none; position: absolute; left: 0; right: 24px; top: 100%;
         background: var(--list-bg); color: var(--list-fg);
@@ -204,14 +212,15 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         cursor: pointer; user-select: none;
         color: var(--vscode-sideBarTitle-foreground, var(--vscode-sideBar-foreground));
     }
-    .drawer-header::before {
-        content: ''; display: inline-block; width: 0; height: 0; flex-shrink: 0; margin-right: 3px;
-        border-left: 3.5px solid currentColor;
-        border-top: 3.5px solid transparent;
-        border-bottom: 3.5px solid transparent;
-        transition: transform .15s; opacity: 0.6;
+    .drawer-header::before, .setting-group-header::before {
+        content: ''; display: inline-block; width: 0; height: 0; flex-shrink: 0; margin-right: 5px;
+        border-left: 5px solid currentColor;
+        border-top: 3px solid transparent;
+        border-bottom: 3px solid transparent;
+        transition: transform .15s; opacity: 0.5;
     }
-    .drawer.open .drawer-header::before { transform: rotate(90deg); }
+    .drawer.open .drawer-header::before,
+    .setting-group.open .setting-group-header::before { transform: rotate(90deg); }
     .drawer-header:hover { background: var(--vscode-toolbar-hoverBackground); }
     .drawer-body { display: none; padding: 4px 0 8px; }
     .drawer.open .drawer-body { display: block; }
@@ -276,7 +285,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     </div>
 </div>
 
-<div class="drawer open">
+<div class="drawer">
     <div class="drawer-header">Setup</div>
     <div class="drawer-body">
         <div class="setup-form">
@@ -317,6 +326,10 @@ if (savedState.drawers) {
         if (savedState.drawers[name]) { d.classList.add('open'); }
         else { d.classList.remove('open'); }
     });
+} else {
+    // First load: only expand the first drawer
+    var first = document.querySelector('.drawer');
+    if (first) { first.classList.add('open'); }
 }
 if (savedState.settingGroups) {
     document.querySelectorAll('.setting-group').forEach(function(g) {
@@ -355,8 +368,8 @@ document.querySelectorAll('.combo-wrap').forEach(wrap => {
         input.value = opt; input.dataset.orig = opt; closeDropdown();
         vscodeApi.postMessage({ type: 'select', id: comboId, value: opt.split(' \u2014 ')[0].trim() });
     }
-    function openDropdown(showAll) { filterOptions(showAll ? '' : input.value); dropdown.classList.add('show'); highlightIdx = -1; }
-    function closeDropdown() { dropdown.classList.remove('show'); highlightIdx = -1; }
+    function openDropdown(showAll) { filterOptions(showAll ? '' : input.value); dropdown.classList.add('show'); wrap.classList.add('open'); highlightIdx = -1; }
+    function closeDropdown() { dropdown.classList.remove('show'); wrap.classList.remove('open'); highlightIdx = -1; }
     input.addEventListener('focus', () => { input.select(); openDropdown(true); });
     input.addEventListener('input', () => { dropdown.classList.add('show'); filterOptions(input.value); });
     arrow.addEventListener('click', () => { dropdown.classList.contains('show') ? closeDropdown() : openDropdown(true); });
@@ -471,7 +484,7 @@ document.querySelectorAll('.setting-group-header').forEach(header => {
             <div class="combo-row">
                 <input class="combo-input" type="text" value="${e(currentValue)}"
                        data-orig="${e(currentValue)}" placeholder="Type to filter..." autocomplete="off">
-                <div class="combo-arrow">\u25BE</div>
+                <div class="combo-arrow"></div>
             </div>
             <div class="combo-dropdown"></div>
         </div>`;
@@ -498,7 +511,7 @@ document.querySelectorAll('.setting-group-header').forEach(header => {
 
         const group = (id: string, title: string, body: string) => `
         <div class="setting-group" data-group="${id}">
-            <div class="setting-group-header">\u25B6 ${title}</div>
+            <div class="setting-group-header">${title}</div>
             <div class="setting-group-body">${body}</div>
         </div>`;
 
@@ -520,7 +533,7 @@ document.querySelectorAll('.setting-group-header').forEach(header => {
                 toggle('pkgcache-cache-downloads', 'Cache Downloads', pkgcache.cache_downloads)
             ) +
             `<div class="setting-group" data-group="proxy">
-                <div class="setting-group-header">\u25B6 HTTP(S) Proxy</div>
+                <div class="setting-group-header">HTTP(S) Proxy</div>
                 <div class="setting-group-body">
                     <div class="setup-form">
                         <div class="setup-title">Proxy Settings</div>

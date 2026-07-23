@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { Celer } from './celer';
-import { StatusBarManager } from './statusbar';
 import { CelerSidebarProvider } from './sidebar';
 import { CelerInstaller } from './installer';
 import {
@@ -23,14 +22,12 @@ import {
 } from './cmds';
 
 let celer: Celer;
-let statusBarManager: StatusBarManager;
 let celerSidebar: CelerSidebarProvider;
 let celerInstaller: CelerInstaller;
 
 export async function activate(context: vscode.ExtensionContext) {
     // Initialize managers
     celer = new Celer();
-    statusBarManager = new StatusBarManager(celer, context);
     celerInstaller = new CelerInstaller(celer.getOutputChannel());
 
     // Check if this is the first time the extension is activated
@@ -65,12 +62,6 @@ export async function activate(context: vscode.ExtensionContext) {
         if (!celerInstalled) {
             vscode.window.showWarningMessage('Celer is not installed. Some features may not work.');
         }
-    }
-
-    // Create status bar items (bottom bar UI) — minimal: only when project exists
-    if (hasCelerProject) {
-        statusBarManager.createStatusBarItems();
-        await statusBarManager.updateStatusBarItems();
     }
 
     // Register sidebar webview provider (left sidebar)
@@ -110,53 +101,32 @@ export async function activate(context: vscode.ExtensionContext) {
     registerCreateCommand(context, celer);
     registerConfigureCommand(context, celer);
     registerVersionCommand(context, celer);
-    registerSelectCommands(context, celer, statusBarManager);
-    registerSelectJobsCommand(context, celer, statusBarManager);
+    registerSelectCommands(context, celer);
+    registerSelectJobsCommand(context, celer);
     registerNfsCommands(context, celer);
 
-    // Register status bar menu toggle command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('celer.toggleStatusBar', () => statusBarManager.showStatusBarMenu())
-    );
-
-    // Auto-install if enabled
-    const config = vscode.workspace.getConfiguration('celer');
-    if (hasCelerProject && config.get('autoInstall', false)) {
-        await celer.runCommand(['install']);
-    }
-
-    // Watch for celer.toml changes — auto-refresh status bar on manual edits
+    // Watch for celer.toml changes — auto-refresh sidebar on manual edits
     const watcher = vscode.workspace.createFileSystemWatcher('**/{celer,Celer}.toml');
 
     let changeTimer: ReturnType<typeof setTimeout> | undefined;
     watcher.onDidChange(async () => {
         clearTimeout(changeTimer);
         changeTimer = setTimeout(async () => {
-            await statusBarManager.updateStatusBarItems();
             celerSidebar.refresh();
         }, 300);
     });
 
     watcher.onDidCreate(async () => {
         vscode.commands.executeCommand('setContext', 'celer.hasCelerProject', true);
-        statusBarManager.createStatusBarItems();
-        await statusBarManager.updateStatusBarItems();
         celerSidebar.refresh();
     });
 
     watcher.onDidDelete(async () => {
         const stillHasProject = await celer.hasCelerProject();
         vscode.commands.executeCommand('setContext', 'celer.hasCelerProject', stillHasProject);
-        if (!stillHasProject) {
-            statusBarManager.dispose();
-        }
     });
 
     context.subscriptions.push(watcher);
 }
 
-export function deactivate() {
-    if (statusBarManager) {
-        statusBarManager.dispose();
-    }
-}
+export function deactivate() { }

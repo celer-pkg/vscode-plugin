@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import * as os from 'os';
 import { Celer } from '../celer';
-import { StatusBarManager } from '../statusbar';
 
 /**
  * Selection commands for platform, project, build type, and jobs
  */
-export function registerSelectCommands(context: vscode.ExtensionContext, celer: Celer, statusBarManager: StatusBarManager): void {
+export function registerSelectCommands(context: vscode.ExtensionContext, celer: Celer): void {
     // Helper: show a QuickPick that auto-focuses on the current item
     async function pickCurrent<T extends vscode.QuickPickItem>(
         title: string, placeHolder: string,
@@ -36,7 +35,6 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
         // Direct selection from tree view (no QuickPick)
         if (args?.platform) {
             await celer.runCommand(['configure', `--platform=${args.platform}`]);
-            await statusBarManager.updateStatusBarItems();
             vscode.commands.executeCommand('celer.sidebarRefresh');
             vscode.window.showInformationMessage(`Platform set to: ${args.platform}`);
             return;
@@ -59,7 +57,6 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
 
         await pickCurrent('Celer Platform', 'Select a platform', items, idx, async (item: any) => {
             await celer.runCommand(['configure', `--platform=${item.platform}`]);
-            await statusBarManager.updateStatusBarItems();
             vscode.commands.executeCommand('celer.sidebarRefresh');
             vscode.window.showInformationMessage(`Platform set to: ${item.platform}`);
         });
@@ -69,7 +66,6 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
         // Direct selection from tree view (no QuickPick)
         if (args?.project) {
             await celer.runCommand(['configure', `--project=${args.project}`]);
-            await statusBarManager.updateStatusBarItems();
             vscode.commands.executeCommand('celer.sidebarRefresh');
             vscode.window.showInformationMessage(`Project set to: ${args.project}`);
             return;
@@ -92,7 +88,6 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
 
         await pickCurrent('Celer Project', 'Select a project', items, idx, async (item: any) => {
             await celer.runCommand(['configure', `--project=${item.project}`]);
-            await statusBarManager.updateStatusBarItems();
             vscode.commands.executeCommand('celer.sidebarRefresh');
             vscode.window.showInformationMessage(`Project set to: ${item.project}`);
         });
@@ -102,7 +97,6 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
         // Direct selection from tree view (no QuickPick)
         if (args?.buildType) {
             await celer.runCommand(['configure', `--build-type=${args.buildType}`]);
-            await statusBarManager.updateStatusBarItems();
             vscode.commands.executeCommand('celer.sidebarRefresh');
             vscode.window.showInformationMessage(`Build type set to: ${args.buildType}`);
             return;
@@ -120,7 +114,6 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
 
         await pickCurrent('Celer Build Type', 'Select a build type', items, idx, async (item: any) => {
             await celer.runCommand(['configure', `--build-type=${item.buildType}`]);
-            await statusBarManager.updateStatusBarItems();
             vscode.commands.executeCommand('celer.sidebarRefresh');
             vscode.window.showInformationMessage(`Build type set to: ${item.buildType}`);
         });
@@ -133,15 +126,13 @@ export function registerSelectCommands(context: vscode.ExtensionContext, celer: 
  */
 export function registerSelectJobsCommand(
     context: vscode.ExtensionContext,
-    celer: Celer,
-    statusBarManager: StatusBarManager
+    celer: Celer
 ): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('celer.selectJobs', async (args?: { jobs?: number }) => {
             // Direct selection from tree view (no QuickPick)
             if (args?.jobs !== undefined) {
                 await celer.runCommand(['configure', `--jobs=${args.jobs}`]);
-                await statusBarManager.updateStatusBarItems();
                 vscode.commands.executeCommand('celer.sidebarRefresh');
                 vscode.window.showInformationMessage(`Build jobs set to: ${args.jobs}`);
                 return;
@@ -186,7 +177,6 @@ export function registerSelectJobsCommand(
                 if (selected) {
                     qp.hide();
                     await celer.runCommand(['configure', `--jobs=${selected.value}`]);
-                    await statusBarManager.updateStatusBarItems();
                     vscode.commands.executeCommand('celer.sidebarRefresh');
                     vscode.window.showInformationMessage(`Build jobs set to: ${selected.value}`);
                 }

@@ -143,9 +143,10 @@ export class Celer {
                 return;
             }
 
-            this.outputChannel.appendLine(`Running: ${this.celerPath} ${args.join(' ')}`);
+            const command = `"${this.celerPath}" ${args.join(' ')}`;
+            this.outputChannel.appendLine(`Running: ${command}`);
             
-            const process = cp.spawn(this.celerPath, args, { 
+            const process = cp.spawn(command, { 
                 cwd,
                 shell: true 
             });
