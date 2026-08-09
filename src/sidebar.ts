@@ -38,7 +38,10 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
                 break;
             }
             case 'setting': {
-                await this.celerManager.runCommandInTerminal(['configure', `--${msg.key}=${msg.value}`]);
+                const key = msg.key;
+                const value = msg.value;
+                await this.celerManager.runCommand(['configure', `--${key}=${value}`]);
+                vscode.window.showInformationMessage(`Celer: ${key} → ${value}`);
                 break;
             }
             case 'pickFolder': {
