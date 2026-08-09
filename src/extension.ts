@@ -17,8 +17,7 @@ import {
     registerConfigureCommand,
     registerVersionCommand,
     registerSelectCommands,
-    registerSelectJobsCommand,
-    registerNfsCommands
+    registerSelectJobsCommand
 } from './cmds';
 
 let celer: Celer;
@@ -103,7 +102,6 @@ export async function activate(context: vscode.ExtensionContext) {
     registerVersionCommand(context, celer);
     registerSelectCommands(context, celer);
     registerSelectJobsCommand(context, celer);
-    registerNfsCommands(context, celer);
 
     // Watch for celer.toml changes — auto-refresh sidebar on manual edits
     const watcher = vscode.workspace.createFileSystemWatcher('**/{celer,Celer}.toml');

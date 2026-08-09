@@ -17,4 +17,3 @@ export { registerCreateCommand } from './create';
 export { registerConfigureCommand } from './configure';
 export { registerVersionCommand } from './version';
 export { registerSelectCommands, registerSelectJobsCommand } from './select';
-export { registerNfsCommands } from './nfs';
