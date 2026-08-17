@@ -109,6 +109,11 @@ export class Celer {
         // Show the terminal
         terminal.show(true);
 
+        // Ensure the terminal is in the workspace root — celer resolves the
+        // workspace directory from the current working directory, so a stale
+        // cwd in a reused terminal could create files in the wrong place.
+        terminal.sendText(`cd "${cwd}"`);
+
         // Build the command - use relative path if it's a local executable
         let cmdExecutable = this.celerPath;
         if (path.isAbsolute(cmdExecutable)) {

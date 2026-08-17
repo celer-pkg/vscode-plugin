@@ -47,8 +47,12 @@ export function registerCreateCommand(context: vscode.ExtensionContext, celer: C
                     const doc = await vscode.workspace.openTextDocument(tomlPath);
                     await vscode.window.showTextDocument(doc);
                 } else {
+                    const [pn, pv] = name.split('@');
+                    const hint = createType.value === 'port' && pn && pv
+                        ? `ports/${pn.charAt(0).toLowerCase()}/${pn}/${pv}/`
+                        : `conf/${createType.value}s/`;
                     vscode.window.showWarningMessage(
-                        `${createType.label} created but file not detected. Check ports/${name.split('@')[0].charAt(0)}/${name.split('@')[0]}/ directory.`
+                        `${createType.label} created but file not detected. Check ${hint} directory.`
                     );
                 }
             }
@@ -90,13 +94,11 @@ function resolveCreatedPath(workspace: string, type: string, name: string): stri
     if (type === 'project') {
         return path.join(workspace, 'conf', 'projects', `${name}.toml`);
     }
-    // port: stored as ports/<first-letter>/<name>/
-    const portName = name.split('@')[0];
-    const portDir = path.join(workspace, 'ports', portName.charAt(0).toLowerCase(), portName);
-    for (const f of ['portfile.celer', 'celer.toml', `${portName}.toml`]) {
-        if (fs.existsSync(path.join(portDir, f))) { return path.join(portDir, f); }
-    }
-    return undefined;
+    // port: stored as ports/<first-letter>/<name>/<version>/port.toml
+    const [portName, version] = name.split('@');
+    if (!portName || !version) { return undefined; }
+    const portDir = path.join(workspace, 'ports', portName.charAt(0).toLowerCase(), portName, version);
+    return path.join(portDir, 'port.toml');
 }
 
 /** Find the most recently modified file in a directory (recursive for ports) */

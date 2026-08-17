@@ -48,10 +48,11 @@ Status bar buttons can be individually toggled via `celer.statusBar.show*` setti
 ## Development
 
 ```bash
-npm install        # Install dependencies
-npm run watch      # Watch & auto-rebuild
-npm run package    # Production build
-npm test           # Run tests
+npm install                 # Install dependencies
+npm run watch               # Watch & auto-rebuild
+npm run package             # Production build
+npm test                    # Run tests
+npx @vscode/vsce package    # Pack to .vsix
 ```
 
 Press `F5` to launch the Extension Development Host for debugging.
