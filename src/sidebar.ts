@@ -135,24 +135,53 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
     :root {
+        --fg: var(--vscode-foreground);
+        --fg-muted: var(--vscode-descriptionForeground, var(--fg));
         --input-bg: var(--vscode-input-background);
-        --input-fg: var(--vscode-input-foreground);
+        --input-fg: var(--vscode-input-foreground, var(--fg));
         --input-border: var(--vscode-input-border, var(--vscode-dropdown-border));
         --focus-border: var(--vscode-focusBorder);
         --list-bg: var(--vscode-dropdown-background);
-        --list-fg: var(--vscode-dropdown-foreground);
+        --list-fg: var(--vscode-dropdown-foreground, var(--fg));
         --list-border: var(--vscode-dropdown-border);
         --hover-bg: var(--vscode-list-hoverBackground);
         --active-bg: var(--vscode-list-activeSelectionBackground);
-        --active-fg: var(--vscode-list-activeSelectionForeground);
+        --active-fg: var(--vscode-list-activeSelectionForeground, var(--fg));
+        --btn-bg: var(--vscode-button-background);
+        --btn-fg: var(--vscode-button-foreground);
+        --btn-hover: var(--vscode-button-hoverBackground, var(--btn-bg));
+        --btn-secondary-bg: var(--vscode-button-secondaryBackground);
+        --btn-secondary-fg: var(--vscode-button-secondaryForeground);
+        --btn-secondary-hover: var(--vscode-button-secondaryHoverBackground, var(--btn-secondary-bg));
         --radius: 6px;
         --radius-sm: 4px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-sideBar-foreground); padding: 8px 0; }
+    body.vscode-light, body.vscode-high-contrast-light {
+        color-scheme: light;
+        --fg: var(--vscode-foreground, #000);
+        --fg-muted: var(--vscode-descriptionForeground, var(--fg));
+        --input-fg: var(--vscode-input-foreground, var(--fg));
+        --list-fg: var(--vscode-dropdown-foreground, var(--fg));
+        --active-fg: var(--vscode-list-activeSelectionForeground, var(--fg));
+    }
+    body.vscode-dark, body.vscode-high-contrast {
+        color-scheme: dark;
+        --fg: var(--vscode-foreground, #fff);
+        --fg-muted: var(--vscode-descriptionForeground, var(--fg));
+        --input-fg: var(--vscode-input-foreground, var(--fg));
+        --list-fg: var(--vscode-dropdown-foreground, var(--fg));
+        --active-fg: var(--vscode-list-activeSelectionForeground, var(--fg));
+    }
+    body {
+        font-family: var(--vscode-font-family); font-size: var(--vscode-font-size);
+        color: var(--fg); background: transparent; padding: 8px 0;
+    }
+    input, textarea, select, button { font-family: inherit; color: inherit; }
+    ::placeholder { color: var(--vscode-input-placeholderForeground, var(--fg-muted)); opacity: 0.8; }
 
     .combo-wrap { position: relative; margin: 2px 8px 6px; }
-    .combo-label { font-size: 11px; color: var(--vscode-descriptionForeground); margin-bottom: 3px; display: block; letter-spacing: 0.3px; }
+    .combo-label { font-size: 11px; color: var(--fg-muted); margin-bottom: 3px; display: block; letter-spacing: 0.3px; }
     .combo-row { display: flex; position: relative; }
     .combo-input {
         flex: 1; background: var(--input-bg); color: var(--input-fg);
@@ -165,7 +194,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         display: flex; align-items: center; justify-content: center;
         width: 28px; background: var(--input-bg); border: 1px solid var(--input-border);
         border-left: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; cursor: pointer;
-        color: var(--vscode-sideBar-foreground); user-select: none;
+        color: var(--fg); user-select: none;
         transition: background .15s;
     }
     .combo-arrow:hover { background: var(--hover-bg); }
@@ -194,18 +223,18 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .cmd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px 8px; }
     .cmd-btn {
         display: flex; align-items: center; gap: 5px;
-        background: transparent; color: var(--vscode-sideBar-foreground);
+        background: transparent; color: var(--fg);
         border: 1px solid var(--vscode-sideBar-border, var(--input-border));
         border-radius: var(--radius-sm); padding: 6px 10px; font-size: 12px;
         cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, box-shadow .15s;
     }
     .cmd-btn:hover { background: var(--vscode-toolbar-hoverBackground); border-color: var(--vscode-focusBorder); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-    .cmd-btn:active { background: var(--active-bg); }
+    .cmd-btn:active { background: var(--active-bg); color: var(--active-fg); }
     .cmd-icon { width: 16px; text-align: center; flex-shrink: 0; }
     .divider { height: 1px; background: var(--vscode-sideBar-border, var(--input-border)); margin: 8px 8px; opacity: 0.35; }
 
     .setting-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; padding: 4px 10px; min-height: 28px; }
-    .setting-label { font-size: 12px; white-space: nowrap; }
+    .setting-label { font-size: 12px; white-space: nowrap; color: var(--fg); }
     .setting-row-wrap { display: flex; width: 100%; }
     .setting-val {
         flex: 1; background: var(--input-bg); color: var(--input-fg);
@@ -217,7 +246,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .setting-folder {
         flex-shrink: 0; background: transparent; border: 1px solid var(--input-border);
         border-left: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-        color: var(--vscode-sideBar-foreground); cursor: pointer; padding: 3px 6px; font-size: 11px;
+        color: var(--fg); cursor: pointer; padding: 3px 6px; font-size: 11px;
         transition: background .15s;
     }
     .setting-folder:hover { background: var(--hover-bg); }
@@ -244,7 +273,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         display: flex; align-items: center; gap: 6px; padding: 8px 10px;
         font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
         cursor: pointer; user-select: none; transition: background .15s;
-        color: var(--vscode-sideBarTitle-foreground, var(--vscode-sideBar-foreground));
+        color: var(--fg);
     }
     .drawer-header::before, .setting-group-header::before {
         content: ''; display: inline-block; width: 0; height: 0; flex-shrink: 0; margin-right: 6px;
@@ -269,7 +298,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .setting-group-header {
         padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
         display: flex; align-items: center; gap: 4px; user-select: none;
-        color: var(--vscode-descriptionForeground); transition: background .15s;
+        color: var(--fg-muted); transition: background .15s;
     }
     .setting-group-header:hover { background: var(--hover-bg); }
     .setting-group-body { display: none; }
@@ -281,7 +310,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     }
     .setup-form + .setup-form { margin-top: 6px; }
-    .setup-title { font-size: 11px; font-weight: 600; margin-bottom: 5px; color: var(--vscode-descriptionForeground); letter-spacing: 0.3px; }
+    .setup-title { font-size: 11px; font-weight: 600; margin-bottom: 5px; color: var(--fg-muted); letter-spacing: 0.3px; }
     .setup-input {
         flex: 1; background: var(--input-bg); color: var(--input-fg);
         border: 1px solid var(--input-border); padding: 5px 8px; font-size: 11px;
@@ -295,7 +324,7 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
     .setup-folder {
         background: var(--input-bg); border: 1px solid var(--input-border);
         border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-        color: var(--vscode-sideBar-foreground); cursor: pointer; padding: 3px 6px; font-size: 11px;
+        color: var(--fg); cursor: pointer; padding: 3px 6px; font-size: 11px;
         transition: background .15s;
     }
     .setup-folder:hover { background: var(--hover-bg); }
@@ -305,10 +334,10 @@ export class CelerSidebarProvider implements vscode.WebviewViewProvider {
         cursor: pointer; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
         transition: background .15s, box-shadow .15s;
     }
-    .btn-remove { background: rgba(255,255,255,0.88); color: #333; border: 1px solid var(--vscode-input-border); }
-    .btn-remove:hover:not(:disabled) { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-    .btn-setup { background: var(--vscode-textLink-foreground); color: var(--vscode-editor-background); }
-    .btn-setup:hover:not(:disabled) { opacity: 0.88; box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
+    .btn-remove { background: var(--btn-secondary-bg); color: var(--btn-secondary-fg); border: 1px solid var(--input-border); }
+    .btn-remove:hover:not(:disabled) { background: var(--btn-secondary-hover); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .btn-setup { background: var(--btn-bg); color: var(--btn-fg); }
+    .btn-setup:hover:not(:disabled) { background: var(--btn-hover); box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
     .btn-setup:disabled, .btn-remove:disabled { opacity: 0.35; cursor: default; }
 </style>
 </head>
